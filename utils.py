@@ -23,9 +23,7 @@ def api_translate(data, target_language):
     try:
         translated = GoogleTranslator(source='auto', target=target_language).translate(data)
     except:
-        ## os sleep for 2 seconds
-        
-        ## check for the system and sleep for 2 seconds 
+        ##sleep for 2 seconds
         time.sleep(2)
         translated = GoogleTranslator(source='auto', target=target_language).translate(data)
     return translated
