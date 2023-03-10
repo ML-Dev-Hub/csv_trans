@@ -32,7 +32,7 @@ def api_translate(data, target_language):
 
 
 
-### read any csv file, using different encoding scheme
+### reading any csv file, using different encoding scheme
 def read_csv_file(file_name, encoding_scheme):
     """
     Input: file_name, encoding_scheme
@@ -44,7 +44,7 @@ def read_csv_file(file_name, encoding_scheme):
     return data
 
 
-## find the encoding scheme of the file
+## finding the encoding scheme of the file
 def find_encoding_scheme(file_name):
     """
     Input: file_name
