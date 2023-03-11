@@ -53,6 +53,15 @@ def find_encoding_scheme(file_name):
     return encoding_scheme
 
 
+## function for saving the data into csv file
+def save_csv_file(data, file_name, encoding_scheme, sep = ','):
+    """
+    Input: data, file_name, encoding_scheme
+    Output: None
+    
+    Description: This function will save the data into csv file
+    """
+    data.to_csv(file_name, encoding = encoding_scheme, sep = sep, index = False)
     
 if __name__ == "__main__":
     #test 

@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from utils import read_csv_file, find_encoding_scheme, api_translate
+from utils import read_csv_file, find_encoding_scheme, api_translate, save_csv_file
 
 
 def translate(file, target_language, sep=','):
@@ -17,7 +17,11 @@ def translate(file, target_language, sep=','):
     ## translate the data
     for col in data.columns:
         data[col] = data[col].apply(lambda x: api_translate(x, target_language))
+        
+    ## save the data to the csv file
+    save_csv_file(data, file, encoding_scheme, sep=sep)
     return data
+
 
 
 if __name__ == "__main__":
