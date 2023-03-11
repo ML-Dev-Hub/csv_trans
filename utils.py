@@ -10,7 +10,6 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-
 ## api for translation the values in the column
 def api_translate(data, target_language):
     ## write dog string to the file
@@ -28,17 +27,15 @@ def api_translate(data, target_language):
         translated = GoogleTranslator(source='auto', target=target_language).translate(data)
     return translated
 
-
-
 ### reading any csv file, using different encoding scheme
-def read_csv_file(file_name, encoding_scheme):
+def read_csv_file(file_name, encoding_scheme, sep = ','):
     """
     Input: file_name, encoding_scheme
     Output: data
     
     Description: This function will read the csv file using the encoding scheme
     """
-    data = pd.read_csv(file_name, encoding = encoding_scheme)
+    data = pd.read_csv(file_name, encoding = encoding_scheme, sep = sep, engine='pyarrow')
     return data
 
 
