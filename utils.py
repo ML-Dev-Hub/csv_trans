@@ -59,23 +59,26 @@ def api_translate(data, source_language, target_language):
     
     Description: This function will translate the data into the target language using google translator
     """
+    translated = ''
     try:
         random_seed = random.randint(1, 1000)
         ## sleep for nanoseconds
         time.sleep(random_seed/1000)
         
-        if len(data) < 4000:
+        if len(data) < 3000:
             translated = GoogleTranslator(source=source_language, target=target_language).translate(data)
         else:
             ## split the data into 4000 characters while ensuring that the last word is space
             split_data = split_text(data)
-            translated = ''
+            
             for i in split_data:
                 translated += GoogleTranslator(source=source_language, target=target_language).translate(i)      
     except:
         ## print the catch error
         print("Error in translating the data")
         print("type error: " + str(TypeError))
+        
+        
     return translated
 
 ### reading any csv file, using different encoding scheme
@@ -112,7 +115,7 @@ def save_csv_file(data, file_name, encoding_scheme, sep = ','):
     
     Description: This function will save the data into csv file
     """
-    data.to_csv(file_name, encoding = encoding_scheme, sep = sep, index = False)
+    data.to_csv(file_name + "_translated.csv", encoding = encoding_scheme, sep = sep, index = False)
     
 if __name__ == "__main__":
     #test 
