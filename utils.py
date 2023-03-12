@@ -60,8 +60,9 @@ def api_translate(data, source_language, target_language):
     Description: This function will translate the data into the target language using google translator
     """
     try:
-        random_seed = random.randint(1, 3)
-        time.sleep(random_seed)
+        random_seed = random.randint(1, 1000)
+        ## sleep for nanoseconds
+        time.sleep(random_seed/1000)
         
         if len(data) < 4000:
             translated = GoogleTranslator(source=source_language, target=target_language).translate(data)
