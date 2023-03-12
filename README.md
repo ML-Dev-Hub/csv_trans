@@ -33,3 +33,8 @@ Our open-source translation tool provides accurate and efficient translations fo
 	```bash
 	python translate.py --file_path <file_path> --file_sperator <file_seperator> --source_language <source_language> --target_language <target_language>
 	```
+	below is the example for translating the csv file: 
+	```bash
+	python translate.py --file_path urdu_headlines.csv --file_sperator , --source_language ur --target_language en
+	```
+       
