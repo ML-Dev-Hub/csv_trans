@@ -93,21 +93,23 @@ def find_encoding_scheme(file_name):
     Description: This function will find the encoding scheme of the file
     """
     with open(file_name, 'rb') as f:
-        rawdata = f.read(100)
+        rawdata = f.read(200)
     encoding_scheme = chardet.detect(rawdata)['encoding']
     return encoding_scheme
 
     
 
 ## function for saving the data into csv file
-def save_csv_file(data, file_name, encoding_scheme, sep = ','):
+def save_csv_file(data, file_name):
     """
     Input: data, file_name, encoding_scheme
     Output: None
     
     Description: This function will save the data into csv file
     """
-    data.to_csv("translated_" + file_name, index = False)
+    encoding_scheme = find_encoding_scheme(file_name)
+    
+    data.to_csv("translated_" + file_name, encoding="utf-16" ,  index = False)
 
 
 def process_column(args):

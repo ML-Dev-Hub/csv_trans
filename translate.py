@@ -24,7 +24,7 @@ def translate(file, source_language, target_language, sep=','):
       #  data[col] = data[col].apply(lambda x: api_translate(x, source_language, target_language))
         
     ## save the data to the csv file
-    save_csv_file(data, file, encoding_scheme, sep=sep)
+    save_csv_file(data, file)
     
 
 
