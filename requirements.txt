@@ -5,7 +5,7 @@ charset-normalizer==3.1.0
 colorama==0.4.6
 deep-translator==1.10.1
 idna==3.4
-numpy @ file:///D:/bld/numpy_1675642697443/work
+numpy==1.24.2
 pandas==1.5.3
 pyarrow==11.0.0
 python-dateutil==2.8.2

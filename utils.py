@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import time
 import random
+import requests
 
 import chardet
 from deep_translator import GoogleTranslator, MyMemoryTranslator
@@ -59,13 +60,18 @@ def api_translate(data, source_language, target_language):
     
     Description: This function will translate the data into the target language using google translator
     """
+    
+    ## if the data is not string then returning the data
+    if not isinstance(data, str):
+        return data
+    
     translated = ''
     try:
         random_seed = random.randint(1, 1000)
         ## sleep for nanoseconds
         time.sleep(random_seed/1000)
         
-        if len(data) < 3000:
+        if len(data) < 4000:
             translated = GoogleTranslator(source=source_language, target=target_language).translate(data)
         else:
             ## split the data into 4000 characters while ensuring that the last word is space
@@ -78,7 +84,9 @@ def api_translate(data, source_language, target_language):
         print("Error in translating the data")
         print("type error: " + str(TypeError))
         
-        
+        ## use the request to google translator api to manually translate the data
+        print(data)
+        print("data length: ", len(data))
     return translated
 
 ### reading any csv file, using different encoding scheme
@@ -102,10 +110,11 @@ def find_encoding_scheme(file_name):
     Description: This function will find the encoding scheme of the file
     """
     with open(file_name, 'rb') as f:
-        rawdata = f.read()
+        rawdata = f.read(100)
     encoding_scheme = chardet.detect(rawdata)['encoding']
     return encoding_scheme
 
+    
 
 ## function for saving the data into csv file
 def save_csv_file(data, file_name, encoding_scheme, sep = ','):
