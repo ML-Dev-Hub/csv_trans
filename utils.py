@@ -65,7 +65,7 @@ def api_translate(data, source_language, target_language):
         ## sleep for nanoseconds
         time.sleep(random_seed/1000)
         
-        if len(data) < 3000:
+        if len(data) < 4000:
             translated = GoogleTranslator(source=source_language, target=target_language).translate(data)
         else:
             ## split the data into 4000 characters while ensuring that the last word is space
