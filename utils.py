@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import time
 import random
+import os
 
 import chardet
 from deep_translator import GoogleTranslator, MyMemoryTranslator
@@ -10,7 +11,7 @@ from deep_translator import GoogleTranslator, MyMemoryTranslator
 import warnings
 warnings.filterwarnings("ignore")
 
-## write a function a change IP address of the system also import the necessary libraries
+## function for changing the IP address of the system
 def change_ip_address():
     """
     Input: None
@@ -18,7 +19,6 @@ def change_ip_address():
     
     Description: This function will change the IP address of the system
     """
-    import os
     os.system("ipconfig /release")
     os.system("ipconfig /renew")
     os.system("ipconfig /flushdns")
