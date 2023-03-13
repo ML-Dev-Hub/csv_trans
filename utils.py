@@ -56,16 +56,16 @@ def api_translate(data, source_language, target_language):
     try:
         random_seed = random.randint(1, 10)
         ## sleep for nanoseconds
-        time.sleep(random_seed/1000)
+        time.sleep(random_seed/10000)
         
         if len(data) < 4000:
             translated = GoogleTranslator(source=source_language, target=target_language).translate(data)
         else:
             ## split the data into 4000 characters while ensuring that the last word is space
             split_data = split_text(data)
-            
             for i in split_data:
-                translated += GoogleTranslator(source=source_language, target=target_language).translate(i)      
+                translated += GoogleTranslator(source=source_language, target=target_language).translate(str(i)) 
+                   
     except:
         ## printing back the data, if the data is not translated
         return data
@@ -107,7 +107,7 @@ def save_csv_file(data, file_name, encoding_scheme, sep = ','):
     
     Description: This function will save the data into csv file
     """
-    data.to_csv(file_name + "_translated.csv", encoding = encoding_scheme, sep = sep, index = False)
+    data.to_csv("translated_" + file_name, index = False)
 
 
 def process_column(args):
