@@ -4,7 +4,7 @@ import time
 import random
 import os
 
-
+from multiprocessing import Pool, cpu_count
 import chardet
 from deep_translator import GoogleTranslator, MyMemoryTranslator
 
@@ -12,20 +12,7 @@ from deep_translator import GoogleTranslator, MyMemoryTranslator
 import warnings
 warnings.filterwarnings("ignore")
 
-## function for changing the IP address of the system
-def change_ip_address():
-    """
-    Input: None
-    Output: None
-    
-    Description: This function will change the IP address of the system
-    """
-    os.system("ipconfig /release")
-    os.system("ipconfig /renew")
-    os.system("ipconfig /flushdns")
-    os.system("ipconfig /registerdns")
-    os.system("ipconfig /renew6")
-    os.system("ipconfig /flushdns")
+
 
 
 ## spliting the data to chunks of 4000 characters
@@ -67,7 +54,7 @@ def api_translate(data, source_language, target_language):
     
     translated = ''
     try:
-        random_seed = random.randint(1, 1000)
+        random_seed = random.randint(1, 10)
         ## sleep for nanoseconds
         time.sleep(random_seed/1000)
         
@@ -80,13 +67,9 @@ def api_translate(data, source_language, target_language):
             for i in split_data:
                 translated += GoogleTranslator(source=source_language, target=target_language).translate(i)      
     except:
-        ## print the catch error
-        print("Error in translating the data")
-        print("type error: " + str(TypeError))
+        ## printing back the data, if the data is not translated
+        return data
         
-        ## use the request to google translator api to manually translate the data
-        print(data)
-        print("data length: ", len(data))
     return translated
 
 ### reading any csv file, using different encoding scheme
@@ -125,7 +108,48 @@ def save_csv_file(data, file_name, encoding_scheme, sep = ','):
     Description: This function will save the data into csv file
     """
     data.to_csv(file_name + "_translated.csv", encoding = encoding_scheme, sep = sep, index = False)
+
+
+def process_column(args):
+    # Perform some processing on the column here, e.g. apply a function or transformation
+    column, source_language, target_language = args
     
+    processed_column = column.apply(lambda x: api_translate(x, source_language, target_language))
+    return processed_column
+
+def process_dataframe(df, source_language, target_language):
+    # Determine the number of threads to use based on the number of available CPU cores
+    num_threads = min(cpu_count(), len(df.columns))
+
+    # Create a Pool of worker threads and use the map function to apply the process_column function to each column
+    with Pool(num_threads) as pool:
+        processed_columns = pool.map(process_column, [(df[column], source_language, target_language ) for column in df])
+
+    # Concatenate the resulting columns back together into a new DataFrame
+    result_df = pd.concat(processed_columns, axis=1)
+
+    return result_df
+
+
+## function for changing the IP address of the system
+def change_ip_address():
+    """
+    Input: None
+    Output: None
+    
+    Description: This function will change the IP address of the system
+    """
+    os.system("ipconfig /release")
+    os.system("ipconfig /renew")
+    os.system("ipconfig /flushdns")
+    os.system("ipconfig /registerdns")
+    os.system("ipconfig /renew6")
+    os.system("ipconfig /flushdns")
+
+
+
+
+   
 if __name__ == "__main__":
     #test 
     print("Hello World")

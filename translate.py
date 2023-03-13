@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-from utils import read_csv_file, find_encoding_scheme, api_translate, save_csv_file
-import tqdm
+from utils import read_csv_file, find_encoding_scheme, api_translate, save_csv_file, process_dataframe
+from tqdm import tqdm
 
 def translate(file, source_language, target_language, sep=','):
     """
@@ -15,8 +15,13 @@ def translate(file, source_language, target_language, sep=','):
     ## read the csv file
     data = read_csv_file(file, encoding_scheme, sep=sep)
     ## translate the data
-    for col in tqdm.tqdm(data.columns):
-        data[col] = data[col].apply(lambda x: api_translate(x, source_language, target_language))
+    # Display a waiting message while the function is executing
+    with tqdm(total=1, desc="Translating DataFrame") as pbar:
+        data = process_dataframe(data, source_language, target_language)
+        pbar.update()
+    
+    #for col in tqdm.tqdm(data.columns):
+      #  data[col] = data[col].apply(lambda x: api_translate(x, source_language, target_language))
         
     ## save the data to the csv file
     save_csv_file(data, file, encoding_scheme, sep=sep)
