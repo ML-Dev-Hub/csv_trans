@@ -1,7 +1,7 @@
 
 ## Universal Translator for csv files
 
-This open-source translation tool provides accurate and efficient translations for CSV files across multiple languages. It can handle almost all value types, even for large files, saving you time and effort. Say goodbye to manual translations and achieve professional and high-quality translations for your CSV files effortlessly with our Universal Translator. The tool is easy to use and customizable to your specific translation needs.
+This open-source translation tool provides accurate and efficient translations for CSV files across multiple languages. It can handle almost all value types, even for large files, saving your time and effort. Say goodbye to manual translations and achieve professional and high-quality translations for your CSV files effortlessly with our Universal Translator. The tool is easy to use and customizable to your specific translation needs.
 
 
 ## Setup
