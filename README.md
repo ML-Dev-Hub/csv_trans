@@ -33,6 +33,6 @@ To install the Universal Translator, run the following commands:
 	```
 	Example use-case for translating a csv file:
 	```bash
-	python translate.py --file_path english.csv --file_separator , --source_language ur --target_language en
+	python translate.py --file_path english.csv --file_separator , --source_language english --target_language urdu
 	```
      
