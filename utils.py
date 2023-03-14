@@ -1,6 +1,7 @@
 import os
 import random
 import time
+import requests.exceptions
 from multiprocessing import Pool, cpu_count
 
 import chardet
@@ -37,7 +38,7 @@ def split_text(text, chunk_size):
 
 
 # function for translating the data using google translator api
-def api_translate(data, source_language, target_language, chunk_size=4000):
+def api_translate(data, source_language, target_language, chunk_size=4000, timeout=10):
     """
     Input: data, target_language
     Output: translated data
@@ -55,14 +56,19 @@ def api_translate(data, source_language, target_language, chunk_size=4000):
         time.sleep(random_seed/10000)
 
         if len(data) < chunk_size:
-            translated = GoogleTranslator(source=source_language, target=target_language).translate(data)
+            translated = GoogleTranslator(
+                source=source_language, target=target_language, timeout=timeout).translate(data)
         else:
             # split the data into 4000 characters while ensuring that the last word is space
             split_data = split_text(data, chunk_size)
             for i in split_data:
-                translated += GoogleTranslator(source=source_language, target=target_language).translate(str(i))
+                translated += GoogleTranslator(
+                    source=source_language, target=target_language, timeout=timeout).translate(str(i))
     except exceptions.TranslationNotFound as e:
         print(f"Translation failed: {e}")
+        return data
+    except requests.exceptions.Timeout as e:
+        print(f"Translation timed out: {e}")
         return data
     return translated
 
@@ -74,8 +80,12 @@ def read_csv_file(file_name, encoding_scheme, sep=','):
     Output: data
     Description: This function will read the csv file using the encoding scheme
     """
-    data = pd.read_csv(file_name, encoding=encoding_scheme, sep=sep, engine='pyarrow')
-    return data
+    try:
+        data = pd.read_csv(file_name, encoding=encoding_scheme, sep=sep, engine='pyarrow')
+        return data
+    except Exception as e:
+        print(f"Error reading file {file_name}: {e}")
+        return None
 
 
 # function for finding the encoding scheme of the file
@@ -85,10 +95,14 @@ def find_encoding_scheme(file_name):
     Output: encoding_scheme
     Description: This function will find the encoding scheme of the file
     """
-    with open(file_name, 'rb') as f:
-        rawdata = f.read(200)
-    encoding_scheme = chardet.detect(rawdata)['encoding']
-    return encoding_scheme
+    try:
+        with open(file_name, 'rb') as f:
+            rawdata = f.read(200)
+        encoding_scheme = chardet.detect(rawdata)['encoding']
+        return encoding_scheme
+    except Exception as e:
+        print(f"Error finding encoding scheme: {e}")
+        return None
 
 
 # function for saving the data into csv file
@@ -98,7 +112,14 @@ def save_csv_file(data, file_name, encoding_scheme):
     Output: None
     Description: This function will save the data into csv file
     """
-    data.to_csv("translated_" + file_name, encoding=encoding_scheme, index=False)
+    path = os.path.dirname(file_name)
+    file_name = os.path.basename(file_name)
+    try:
+        data.to_csv(os.path.join(path, "translated_" + file_name), encoding=encoding_scheme, index=False)
+    except UnicodeEncodeError:
+        data.to_csv(os.path.join(path, "translated_" + file_name), encoding='utf-8', index=False)
+    except Exception as e:
+        print(f"Error saving file {file_name}: {e}")
 
 
 # function for processing the column
