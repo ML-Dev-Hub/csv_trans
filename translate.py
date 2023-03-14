@@ -22,9 +22,6 @@ def translate(file, source_language, target_language, sep=','):
         data = process_dataframe(data, source_language, target_language)
         pbar.update()
 
-    for col in tqdm(data.columns, desc="Translating Columns"):
-        data[col] = data[col].apply(lambda x: api_translate(x, source_language, target_language))
-
     # save the data to the csv file
     save_csv_file(data, file, encoding_scheme)
 
