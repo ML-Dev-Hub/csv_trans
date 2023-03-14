@@ -46,15 +46,16 @@ def main():
 
     if args.source_language not in supported_languages:
         print("Source language is not supported")
+        print("Supported languages are: ", ", ".join(i for i in supported_languages))
         return
 
     if args.target_language not in supported_languages:
         print("Target language is not supported")
+        print("Supported languages are: ", ", ".join(i for i in supported_languages))
         return
 
     translate(args.file_path, args.source_language, args.target_language, args.file_separator)
 
 
 if __name__ == "__main__":
-    # print(supported_languages)
     main()
