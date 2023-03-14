@@ -34,11 +34,11 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--file_path', type=str, required=True, help='file path')
-    parser.add_argument('--file_sperator', type=str, required=True, help='file seperator')
+    parser.add_argument('--file_separator', type=str, required=True, help='file seperator')
     parser.add_argument('--source_language', type=str, required=True, help='source language')
     parser.add_argument('--target_language', type=str, required=True, help='target language')
     args = parser.parse_args()
-    translate(args.file_path, args.source_language ,args.target_language, sep=args.file_sperator)
+    translate(args.file_path, args.source_language ,args.target_language, sep=args.file_separator)
 
 
 if __name__ == "__main__":
