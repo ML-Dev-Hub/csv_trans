@@ -1,6 +1,8 @@
-# Universal Translator for csv files
 
-Our open-source translation tool provides accurate and efficient translations for CSV files across languages. The advanced technology used in the tool can handle all value types, even for large files, saving you time and effort. Say goodbye to manual translations and achieve professional and high-quality translations for your CSV files effortlessly with our Universal Translator. The tool is easy to use and customizable to your specific translation needs.
+## Universal Translator for csv files
+
+This open-source translation tool provides accurate and efficient translations for CSV files across languages. It can handle almost all value types, even for large files, saving you time and effort. Say goodbye to manual translations and achieve professional and high-quality translations for your CSV files effortlessly.
+
 
 ## Setup
 To install the Universal Translator, run the following commands:
@@ -31,6 +33,6 @@ To install the Universal Translator, run the following commands:
 	```
 	Example use-case for translating a csv file:
 	```bash
-	python translate.py --file_path=urdu_headlines.csv --file_separator=',' --source_language='ur' --target_language='en'
+	python translate.py --file_path english.csv --file_separator , --source_language ur --target_language en
 	```
      
