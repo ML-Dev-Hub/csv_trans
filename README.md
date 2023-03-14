@@ -1,6 +1,6 @@
-## Unviversal Translator for csv files
+## Universal Translator for csv files
 
-Our open-source translation tool provides accurate and efficient translations for CSV files across languages. Our advanced technology can handle all value types, even for large files, saving you time and effort. Say goodbye to manual translations and achieve professional and high-quality translations for your CSV files effortlessly.
+This open-source translation tool provides accurate and efficient translations for CSV files across languages. It can handle almost all value types, even for large files, saving you time and effort. Say goodbye to manual translations and achieve professional and high-quality translations for your CSV files effortlessly.
 
 ## Setup
 - open the terminal
