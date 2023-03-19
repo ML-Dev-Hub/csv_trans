@@ -14,9 +14,9 @@ You can use the package in two ways:
 Both the CLI and the import utility take the same arguments. The only difference is that the CLI takes the arguments as command line arguments while the import utility takes the arguments as function arguments. The arguments are listed below.
 
 1. `--file` or `-f`: The path to the source csv file.
-2. `--source_language` or `-sl`: The source language of the csv file. The default value is `en`.
-3. `--target_language` or `-tl`: The target language of the csv file. The default value is `ur`.
-4. `--sep` or `-s`: The separator used in the csv file. The default value is `,`.
+2. `--source_language` or `-sl`: The source language of the csv file.
+3. `--target_language` or `-tl`: The target language of the csv file.
+4. `--sep` or `-s`: The separator used in the csv file.
 
 ### Using the import utility
 ```bash

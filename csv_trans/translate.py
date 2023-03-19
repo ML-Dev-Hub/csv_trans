@@ -11,10 +11,6 @@ def translate(file: str, source_lang: str, target_lang: str, sep: str = ',') -> 
     Translates the data in the file to the target language and saves the result
     """
     encoding_scheme = detect_encoding_scheme(file)
-    if encoding_scheme is None:
-        print("Unable to detect encoding scheme")
-        return
-
     # read the data from the csv file
     data = read_csv_file(file, encoding_scheme, sep)
     if not validate_dataframe(data):
@@ -34,7 +30,8 @@ def translate(file: str, source_lang: str, target_lang: str, sep: str = ',') -> 
     save_csv_file(data, file, encoding_scheme)
 
 
-def main(file_path: str, source_language: str, target_language: str, file_separator: str) -> None:
+# make file_separator optional
+def main(file_path: str, source_language: str, target_language: str, file_separator: str = ',') -> None:
     """
     Translate the data in file_path to the target_language and save the result to the same file.
     """
@@ -60,9 +57,5 @@ def main(file_path: str, source_language: str, target_language: str, file_separa
     if wrong_args:
         print("Supported languages are: ", ", ".join([f"{k} ({v})" for k, v in LANGUAGES.items()]))
         return
-    
+
     translate(args.file_path, args.source_language, args.target_language, args.file_separator)
-
-
-if __name__ == '__main__':
-    main('../data/test.csv', 'en', 'fy', ',')

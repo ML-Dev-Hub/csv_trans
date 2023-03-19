@@ -5,7 +5,10 @@ DESCRIPTION = "A package for translating csv files across multiple languages"
 
 LONG_DESCIPTION = """
 # Universal Translator for csv files
-This package is used to translate csv files across different languages. It uses the Google Translate API to translate the csv files from a source language to a target language. Supported languages are listed [here](https://cloud.google.com/translate/docs/languages). The package can handle csv files with multiple columns and rows and can translate the whole file in one go, saving your time and effort. 
+This package is used to translate csv files across different languages. It uses the Google Translate API to translate 
+the csv files from a source language to a target language. Supported languages are listed 
+[here](https://cloud.google.com/translate/docs/languages). The package can handle csv files with multiple columns and 
+rows and can translate the whole file in one go, saving your time and effort. 
 
 ## Installation
 ```bash
@@ -17,7 +20,9 @@ You can use the package in two ways:
 1. Using the command line interface (CLI)
 2. Using the import utility in your python code.
 
-Both the CLI and the import utility take the same arguments. The only difference is that the CLI takes the arguments as command line arguments while the import utility takes the arguments as function arguments. The arguments are listed below.
+Both the CLI and the import utility take the same arguments. The only difference is that the CLI takes the arguments 
+as command line arguments while the import utility takes the arguments as function arguments. 
+The arguments are listed below.
 
 1. `--file` or `-f`: The path to the source csv file.
 2. `--source_language` or `-sl`: The source language of the csv file. The default value is `en`.
@@ -51,8 +56,7 @@ For Further information, checkout our [GitHub Page](https://github.com/ML-Dev-Hu
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 """
 
-## Setting up
-setup (
+setup(
     name="csv_trans",
     version=VERSION,
     author="Saeed Ahmad",
@@ -71,6 +75,7 @@ setup (
         "charset-normalizer",
         "colorama",
         "deep-translator==1.10.1",
+        "googletrans",
         "idna",
         "numpy",
         "pandas",
@@ -81,14 +86,15 @@ setup (
         "six",
         "soupsieve",
         "tqdm",
-        "urllib3",
+        "urllib3"
         ],
     entry_points={
         "console_scripts": [
             "csv_trans = csv_trans.__main__:cli"
         ]
     },
-    keywords=['python', 'csv', 'translate', 'translator', 'google', 'google translator', 'google translate', 'translate csv'],
+    keywords=['python', 'csv', 'translate', 'translator', 'google',
+              'google translator', 'google translate', 'translate csv'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "Intended Audience :: Developers",

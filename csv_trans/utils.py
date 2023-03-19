@@ -59,7 +59,7 @@ def translate_text(texts, target_language, source_language='en', chunk_size=4000
             try:
                 random_seed = random.randint(1, 10)
                 # sleep for nanoseconds
-                time.sleep(random_seed / 10000)
+                time.sleep(random_seed / 100000)
 
                 if len(text) < chunk_size:
                     translated = GoogleTranslator(
@@ -162,15 +162,3 @@ def save_csv_file(df, file_path, encoding_scheme):
         df.to_csv(os.path.join(path, "translated_" + file_name), encoding='utf-8', index=False)
     except Exception as e:
         print(f"Error saving file {file_name}: {e}")
-
-
-def change_ip_address():
-    """
-    Change the IP address of the computer
-    """
-    os.system("ipconfig /release")
-    os.system("ipconfig /renew")
-    os.system("ipconfig /flushdns")
-    os.system("ipconfig /registerdns")
-    os.system("ipconfig /renew6")
-    os.system("ipconfig /flushdns")
