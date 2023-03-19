@@ -5,7 +5,9 @@ This package is used to translate csv files across multiple languages. It uses g
 
 
 ## Installation
+```bash
 pip install csv-trans
+```
 
 ## How to use it?
 You can use it in two ways:
@@ -13,8 +15,10 @@ You can use it in two ways:
 2. Using the import utility in your python code
     You can import the package and use the translate function to translate your csv file. You can use dogstrings to get more information about the function.
     For example:
-    ```from translate import translate```
-    ```translate(file, source_language, target_language, sep=',')```
+    ```bash
+    from translate import translate
+    translate(file, source_language, target_language, sep=',')
+    ```
 
 
 For Further information, checkout our Github page: 	https://github.com/ML-Dev-Hub/universal-translator-for-csv-files
