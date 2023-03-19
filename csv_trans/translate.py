@@ -2,6 +2,11 @@ from deep_translator import GoogleTranslator
 from .utils import read_csv_file, find_encoding_scheme, save_csv_file, process_dataframe, is_valid_dataframe
 from tqdm import tqdm
 
+
+
+__all__ = ['translate', 'main']
+
+
 # Get the list of supported languages
 translator = GoogleTranslator()
 supported_languages = translator.get_supported_languages(as_dict=True).keys()

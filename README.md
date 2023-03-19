@@ -1,39 +1,24 @@
 
 ## Universal Translator for csv files
 
-This open-source translation tool provides accurate and efficient translations for CSV files across multiple languages. It can handle almost all value types, even for large files, saving your time and effort. Say goodbye to manual translations and achieve professional and high-quality translations for your CSV files effortlessly with our csv-translator.
+This package is used to translate csv files across multiple languages. It uses google translator api to translate the csv-data from almost any source languague to any target language. It can handle almost all value types, even for large files, saving your time and effort. Say goodbye to manual translations and achieve professional and high-quality translations for your CSV files effortlessly with our CSV Translator.
 
-## Setup
-To install the Universal Translator, run the following commands:
 
-- clone the repository
-	```bash
-	git clone https://github.com/ML-Dev-Hub/universal-translator-for-csv-files.git
-	```
-- change the directory
-	```bash
-	cd universal-translator-for-csv-files
-	```
-- setup your virtual environment
- 	```bash
-	pip3 install pipenv
-	pipenv install
-	pipenv shell
-	```
-	
-- install the requirements 
-	```bash
-	pip install -r requirements.txt
-	```
+## Installation
+pip install csv-trans
 
-- translate your csv file by executing the code in this prompt:
-	```bash
-	python translate.py --file_path <file_path> --file_separator <file_seperator> --source_language <source_language> --target_language <target_language>
-	```
-	Example use-case for translating a csv file:
-	```bash
-	python translate.py --file_path english.csv --file_separator , --source_language english --target_language urdu
-	```
+## How to use it?
+You can use it in two ways:
+1. Using the command line interface (CLI) 
+2. Using the import utility in your python code
+    You can import the package and use the translate function to translate your csv file. You can use dogstrings to get more information about the function.
+    For example:
+    ```from translate import translate```
+    ```translate(file, source_language, target_language, sep=',')```
+
+
+For Further information, checkout our Github page: 	https://github.com/ML-Dev-Hub/universal-translator-for-csv-files
+    
      
 ## Contributors ✨
 
