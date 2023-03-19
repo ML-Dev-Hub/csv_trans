@@ -1,4 +1,4 @@
-from src.csv_trans.translate import translate
+from csv_trans.translate import translate
 import click
 
 
