@@ -8,18 +8,84 @@ import chardet
 import pandas as pd
 from deep_translator import GoogleTranslator, exceptions
 
-
-# turn off warning
+# Turn off warning
 import warnings
 warnings.filterwarnings("ignore")
 
 
-# function for splitting the text into chunks of given size
-def split_text(text, chunk_size):
+def detect_encoding_scheme(file_path):
+    """Detect encoding scheme of a CSV file"""
+    try:
+        with open(file_path, 'rb') as f:
+            rawdata = f.read(200)
+        encoding_scheme = chardet.detect(rawdata)['encoding']
+        return encoding_scheme
+    except Exception as e:
+        print(f"Error detecting encoding scheme: {e}")
+        return None
+
+
+def validate_dataframe(df):
     """
-    Input: text (data), chunk_size
-    Output: list containing chunks of the input data of mentioned chunk_size
-    Description: This function will split the input data into a fixed chunk size
+    Check if the data is a valid dataframe and not empty.
+    """
+    if isinstance(df, pd.DataFrame) and not df.empty:
+        return True
+    return False
+
+
+def translate_text(texts, target_language, source_language='en', chunk_size=4000, timeout=10):
+    """
+    Translate the text into the target language using Google Translator API
+
+    :param texts: List of texts to be translated
+    :param source_language: The language of the input text
+    :param target_language: The target language to translate the text to
+    :param chunk_size: The size of chunk to split the input text
+    :param timeout: Timeout length for the request
+    
+    :return:
+    """
+    translations = []
+
+    # Loop through all texts input
+    for text in texts:
+        # If the text is not in string format, add to translations list
+        if not isinstance(text, str):
+            translations.append(text)
+            continue
+        else:
+            translated = ''
+            try:
+                random_seed = random.randint(1, 10)
+                # sleep for nanoseconds
+                time.sleep(random_seed / 10000)
+
+                if len(text) < chunk_size:
+                    translated = GoogleTranslator(
+                        source=source_language, target=target_language, timeout=timeout).translate(text)
+                else:
+                    # split the data into 4000 characters while ensuring that the last word is space
+                    split_data = split_text_data(text, chunk_size)
+                    for i in split_data:
+                        translated += GoogleTranslator(
+                            source=source_language, target=target_language, timeout=timeout).translate(str(i))
+            except exceptions.TranslationNotFound as e:
+                print(f"Translation failed: {e}")
+                translations.append(text)
+            except requests.exceptions.Timeout as e:
+                print(f"Translation timed out: {e}")
+                translations.append(text)
+            translations.append(translated)
+    return translations
+
+
+def split_text_data(text, chunk_size):
+    """
+    Split the input data/text into a fixed chunk size
+    
+    :param text: the input data to be split
+    :param chunk_size: The chunk size to split the data
     """
     chunks = []
     start = 0
@@ -39,135 +105,68 @@ def split_text(text, chunk_size):
         chunks.append(text[start:end])
         start = end + 1
         end = start + chunk_size
+
     return chunks
 
 
-# function for translating the data using google translator api
-def api_translate(data, source_language, target_language, chunk_size=4000, timeout=10):
+def translate_dataframe(df, source_language, target_language):
     """
-    Input: data, target_language
-    Output: translated data
-    Description: This function will translate the data into the target language using google translator
+    Translate a given pandas DataFrame to a desired language
     """
+    # Determine the number of threads to use based on the number of available CPU cores
+    num_threads = min(cpu_count(), len(df.columns))
+    # Create a Pool of worker threads and use the map function to apply the translate_text function to each column
+    with Pool(num_threads) as pool:
+        # Create a tuple of (column, source_language, target_language) for each column in dataframe
+        column_args = [(df[column], target_language, source_language) for column in df.columns]
+        # Using the pool, execute the translate_text function on each tuple of column arguments
+        processed_columns = pool.starmap(translate_text, column_args)
 
-    # if the data is not string then returning the data
-    if not isinstance(data, str):
-        return data
+    # Concatenate the resulting columns back together into a new DataFrame
+    result_df = pd.concat([pd.Series(processed_columns[i], name=df.columns[i])
+                           for i in range(len(processed_columns))], axis=1)
 
-    translated = ''
-    try:
-        random_seed = random.randint(1, 10)
-        # sleep for nanoseconds
-        time.sleep(random_seed/10000)
-
-        if len(data) < chunk_size:
-            translated = GoogleTranslator(
-                source=source_language, target=target_language, timeout=timeout).translate(data)
-        else:
-            # split the data into 4000 characters while ensuring that the last word is space
-            split_data = split_text(data, chunk_size)
-            for i in split_data:
-                translated += GoogleTranslator(
-                    source=source_language, target=target_language, timeout=timeout).translate(str(i))
-    except exceptions.TranslationNotFound as e:
-        print(f"Translation failed: {e}")
-        return data
-    except requests.exceptions.Timeout as e:
-        print(f"Translation timed out: {e}")
-        return data
-    return translated
+    return result_df
 
 
-# function for reading the csv file using the encoding scheme
-def read_csv_file(file_name, encoding_scheme, sep=','):
+def read_csv_file(file_path, encoding_scheme, separator=','):
     """
-    Input: file_name, encoding_scheme
-    Output: data
-    Description: This function will read the csv file using the encoding scheme
+    Read a CSV file using the given encoding scheme and delimiter
+    
+    :param file_path: the path to the input file
+    :param encoding_scheme: the encoding to use when reading the file
+    :param separator: the delimiter to use when reading the CSV file
     """
     try:
-        data = pd.read_csv(file_name, encoding=encoding_scheme, sep=sep, engine='pyarrow')
+        data = pd.read_csv(file_path, encoding=encoding_scheme, sep=separator, engine='pyarrow')
         return data
     except Exception as e:
-        print(f"Error reading file {file_name}: {e}")
+        print(f"Error reading file {file_path}: {e}")
         return None
 
 
-# function for finding the encoding scheme of the file
-def find_encoding_scheme(file_name):
+def save_csv_file(df, file_path, encoding_scheme):
     """
-    Input: file_name
-    Output: encoding_scheme
-    Description: This function will find the encoding scheme of the file
+    Save a pandas DataFrame to a CSV file
+    
+    :param df: the DataFrame to be saved as CSV
+    :param file_path: the full path including the filename of the output file
+    :param encoding_scheme: the encoding scheme to use when saving the CSV file
     """
-    try:
-        with open(file_name, 'rb') as f:
-            rawdata = f.read(200)
-        encoding_scheme = chardet.detect(rawdata)['encoding']
-        return encoding_scheme
-    except Exception as e:
-        print(f"Error finding encoding scheme: {e}")
-        return None
 
-
-# function for saving the data into csv file
-def save_csv_file(data, file_name, encoding_scheme):
-    """
-    Input: data, file_name, encoding_scheme
-    Output: None
-    Description: This function will save the data into csv file
-    """
-    path = os.path.dirname(file_name)
-    file_name = os.path.basename(file_name)
+    path = os.path.dirname(file_path)
+    file_name = os.path.basename(file_path)
     try:
-        data.to_csv(os.path.join(path, "translated_" + file_name), encoding=encoding_scheme, index=False)
+        df.to_csv(os.path.join(path, "translated_" + file_name), encoding=encoding_scheme, index=False)
     except UnicodeEncodeError:
-        data.to_csv(os.path.join(path, "translated_" + file_name), encoding='utf-8', index=False)
+        df.to_csv(os.path.join(path, "translated_" + file_name), encoding='utf-8', index=False)
     except Exception as e:
         print(f"Error saving file {file_name}: {e}")
 
 
-# function for processing the column
-def process_column(args):
-    # Unpack the arguments
-    column, source_language, target_language = args
-    # Perform some processing on the column here, e.g. apply a function or transformation
-    processed_column = column.apply(lambda x: api_translate(x, source_language, target_language))
-    return processed_column
-
-
-# function for processing the dataframe
-def process_dataframe(df, source_language, target_language):
-    # Determine the number of threads to use based on the number of available CPU cores
-    num_threads = min(cpu_count(), len(df.columns))
-    # Create a Pool of worker threads and use the map function to apply the process_column function to each column
-    with Pool(num_threads) as pool:
-        processed_columns = pool.map(process_column, [(df[column], source_language, target_language)
-                                                      for column in df.columns])
-
-    # Concatenate the resulting columns back together into a new DataFrame
-    result_df = pd.concat(processed_columns, axis=1)
-    return result_df
-
-## data validation functions
-def is_valid_dataframe(data):
-    """
-    Input: data
-    Output: True/False
-    Description: This function will check if the data is valid dataframe or not and is not empty
-    """
-    if isinstance(data, pd.DataFrame) and not data.empty:
-        return True
-    return False
-
-
-
-# function for changing the ip address of the system
 def change_ip_address():
     """
-    Input: None
-    Output: None
-    Description: This function will change the IP address of the system
+    Change the IP address of the computer
     """
     os.system("ipconfig /release")
     os.system("ipconfig /renew")
@@ -175,8 +174,3 @@ def change_ip_address():
     os.system("ipconfig /registerdns")
     os.system("ipconfig /renew6")
     os.system("ipconfig /flushdns")
-
-
-if __name__ == "__main__":
-    # test the code
-    print("Hello World")

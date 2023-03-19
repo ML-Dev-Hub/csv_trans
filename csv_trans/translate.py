@@ -1,81 +1,68 @@
-from deep_translator import GoogleTranslator
-from .utils import read_csv_file, find_encoding_scheme, save_csv_file, process_dataframe, is_valid_dataframe
+from googletrans import LANGUAGES
 from tqdm import tqdm
-
-
+import argparse
+from utils import detect_encoding_scheme, validate_dataframe, read_csv_file, save_csv_file, translate_dataframe
 
 __all__ = ['translate', 'main']
 
 
-# Get the list of supported languages
-translator = GoogleTranslator()
-supported_languages = translator.get_supported_languages(as_dict=True).keys()
-
-
-def translate(file, source_language, target_language, sep=','):
+def translate(file: str, source_lang: str, target_lang: str, sep: str = ',') -> None:
     """
-    Input: file, source_language, target_language, sep
-    Output: translated data
-    Description: This function will translate the data into the target language using google translator api
+    Translates the data in the file to the target language and saves the result
     """
-
-    if source_language not in supported_languages:
-        print("Source language is not supported")
-        print("Supported languages are: ", ", ".join(i for i in supported_languages))
+    encoding_scheme = detect_encoding_scheme(file)
+    if encoding_scheme is None:
+        print("Unable to detect encoding scheme")
         return
 
-    if target_language not in supported_languages:
-        print("Target language is not supported")
-        print("Supported languages are: ", ", ".join(i for i in supported_languages))
+    # read the data from the csv file
+    data = read_csv_file(file, encoding_scheme, sep)
+    if not validate_dataframe(data):
+        print("Unable to read data from file")
         return
-    
-    
-    encoding_scheme = find_encoding_scheme(file)
-    data = read_csv_file(file, encoding_scheme, sep=sep)
-    
-    ## data validation
-    if not is_valid_dataframe(data):
-        print("Data is not valid")
-        return
+
+    # rename the column of the dataframe from the source language to the target language
+    data = data.rename(columns={data.columns[1]: target_lang})
 
     # Display a waiting message while the function is executing
     with tqdm(total=1, desc="Translating DataFrame") as pbar:
-        data = process_dataframe(data, source_language, target_language)
+        # translate the data
+        data = translate_dataframe(data, source_lang, target_lang)
         pbar.update()
 
     # save the data to the csv file
     save_csv_file(data, file, encoding_scheme)
 
 
-# create a function that takes arguments as file path, target language, file seperator using cmd and parameters
-def main():
-    import argparse
-
+def main(file_path: str, source_language: str, target_language: str, file_separator: str) -> None:
+    """
+    Translate the data in file_path to the target_language and save the result to the same file.
+    """
     parser = argparse.ArgumentParser(
         description='Translate the data into the target language',
-        usage="python translate.py --file_path=../data/translated_data.csv --file_separator=',' --source_language=en "
-              "--target_language=hi"
     )
-    parser.add_argument('--file_path', type=str, required=True, help='file path')
-    parser.add_argument('--file_separator', type=str, required=True, help='file separator')
-    parser.add_argument('--source_language', type=str, required=True, help='source language')
-    parser.add_argument('--target_language', type=str, required=True, help='target language')
-    args = parser.parse_args()
+    parser.add_argument('-f', '--file-path', type=str, required=True, help='file path')
+    parser.add_argument('-fs', '--file-separator', type=str, required=True, help='file separator')
+    parser.add_argument('-sl', '--source-language', type=str, required=True, help='source language')
+    parser.add_argument('-tl', '--target-language', type=str, required=True, help='target language')
+    args = parser.parse_args([f"--file-path={file_path}", f"--file-separator={file_separator}",
+                              f"--source-language={source_language}", f"--target-language={target_language}"])
 
     wrong_args = False
-    if args.source_language not in supported_languages:
+    if args.source_language not in LANGUAGES.keys() and args.source_language not in LANGUAGES.values():
         print("Source language is not supported")
         wrong_args = True
 
-    if args.target_language not in supported_languages:
+    if args.target_language not in LANGUAGES.keys() and args.target_language not in LANGUAGES.values():
         print("Target language is not supported")
         wrong_args = True
 
     if wrong_args:
-        print("Supported languages are: ", ", ".join(i for i in supported_languages))
+        print("Supported languages are: ", ", ".join([f"{k} ({v})" for k, v in LANGUAGES.items()]))
         return
-
+    
     translate(args.file_path, args.source_language, args.target_language, args.file_separator)
 
 
-
+if __name__ == '__main__':
+    main('../data/test.csv', 'en', 'fy', ',')
