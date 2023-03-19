@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = '1.0.0'
+VERSION = '1.0.1'
 DESCRIPTION = "A package for translating csv files across multiple languages"
 
 LONG_DESCIPTION = """

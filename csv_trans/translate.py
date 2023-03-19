@@ -1,7 +1,7 @@
 from googletrans import LANGUAGES
 from tqdm import tqdm
 import argparse
-from utils import detect_encoding_scheme, validate_dataframe, read_csv_file, save_csv_file, translate_dataframe
+from .utils import detect_encoding_scheme, validate_dataframe, read_csv_file, save_csv_file, translate_dataframe
 
 __all__ = ['translate', 'main']
 
