@@ -1,30 +1,31 @@
-
-## Universal Translator for csv files
-
-This package is used to translate csv files across multiple languages. It uses google translator api to translate the csv-data from almost any source languague to any target language. It can handle almost all value types, even for large files, saving your time and effort. Say goodbye to manual translations and achieve professional and high-quality translations for your CSV files effortlessly with our CSV Translator.
-
+# Universal Translator for csv files
+This package is used to translate csv files across different languages. It uses the Google Translate API to translate the csv files from a source language to a target language. Supported languages are listed [here](https://cloud.google.com/translate/docs/languages). The package can handle csv files with multiple columns and rows and can translate the whole file in one go, saving your time and effort. 
 
 ## Installation
 ```bash
 pip install csv-trans
 ```
 
-## How to use it?
-You can use it in two ways:
-1. Using the command line interface (CLI) 
-2. Using the import utility in your python code
-    You can import the package and use the translate function to translate your csv file. You can use dogstrings to get more information about the function.
-    For example:
-    ```bash
-    from csv_trans import translate
-    translate(file, source_language, target_language, sep=',')
-    ```
+You can use the package in two ways:
+1. Using the command line interface (CLI)
+2. Using the import utility in your python code.
 
-    
+Both the CLI and the import utility take the same arguments. The only difference is that the CLI takes the arguments as command line arguments while the import utility takes the arguments as function arguments. The arguments are listed below.
+
+1. `--file` or `-f`: The path to the source csv file.
+2. `--source_language` or `-sl`: The source language of the csv file.
+3. `--target_language` or `-tl`: The target language of the csv file.
+4. `--sep` or `-s`: The separator used in the csv file.
+
+### Using the import utility
+```bash
+from csv_trans import translate
+translate(file, source_language, target_language, sep=',')
+```
+
+For Further information, checkout our [GitHub Page](https://github.com/ML-Dev-Hub/universal-translator-for-csv-files).
      
-## Contributors 
-
-
+## Contributors ✨
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
