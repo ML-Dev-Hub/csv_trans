@@ -16,7 +16,7 @@ You can use it in two ways:
     You can import the package and use the translate function to translate your csv file. You can use dogstrings to get more information about the function.
     For example:
     ```bash
-    from translate import translate
+    from csv_trans import translate
     translate(file, source_language, target_language, sep=',')
     ```
 
