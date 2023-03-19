@@ -1,7 +1,54 @@
 from setuptools import setup, find_packages
 
-VERSION = '0.0.4'
+VERSION = '0.0.2'
 DESCRIPTION = "A package for translating csv files across multiple languages"
+
+LONG_DESCIPTION = """
+## Universal Translator for csv files
+
+This package is used to translate csv files across multiple languages. It uses google translator api to translate the csv-data from almost any source languague to any target language. It can handle almost all value types, even for large files, saving your time and effort. Say goodbye to manual translations and achieve professional and high-quality translations for your CSV files effortlessly with our CSV Translator.
+
+
+## Installation
+pip install csv-trans
+
+## How to use it?
+You can use it in two ways:
+1. Using the command line interface (CLI) 
+2. Using the import utility in your python code
+    You can import the package and use the translate function to translate your csv file. You can use dogstrings to get more information about the function.
+    For example:
+    ```from translate import translate```
+    ```translate(file, source_language, target_language, sep=',')```
+
+
+For Further information, checkout our Github page: 	https://github.com/ML-Dev-Hub/universal-translator-for-csv-files
+    
+     
+## Contributors 
+
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center"><a href="https://github.com/saeedahmadicp"><img src="https://avatars.githubusercontent.com/saeedahmadicp?v=4?s=100" width="100px;" alt="Saeed Ahmad"/><br /><sub><b>Saeed Ahmad</b></sub></a></td>
+      <td align="center"><a href="https://github.com/ali-izhar"><img src="https://avatars3.githubusercontent.com/ali-izhar?v=4?s=100" width="100px;" alt="Izhar Ali"/><br /><sub><b>Izhar Ali</b></sub></a></td>
+ </tr>
+  </tbody>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+
+"""
+
+
 
 
 ## Setting up
@@ -11,30 +58,30 @@ setup (
     author="Saeed Ahmad",
     author_email="saeedahmad.icp@gmail.com",
     description=DESCRIPTION,
-    long_description=open('README.md').read(),
+    long_description=LONG_DESCIPTION,
     long_description_content_type="text/markdown",
     url="https://github.com/ML-Dev-Hub/universal-translator-for-csv-files",
     packages=find_packages(),
     python_requires=">=3.6",
     install_requires=[
-        "click==8.0.3",
-        "beautifulsoup4==4.11.2",
-        "certifi==2022.12.7",
-        "chardet==5.1.0",
-        "charset-normalizer==3.1.0",
-        "colorama==0.4.6",
+        "click",
+        "beautifulsoup4",
+        "certifi",
+        "chardet",
+        "charset-normalizer",
+        "colorama",
         "deep-translator==1.10.1",
-        "idna==3.4",
-        "numpy==1.24.2",
-        "pandas==1.5.3",
-        "pyarrow==11.0.0",
-        "python-dateutil==2.8.2",
-        "pytz==2022.7.1",
-        "requests==2.28.2",
-        "six==1.16.0",
-        "soupsieve==2.4",
-        "tqdm==4.65.0",
-        "urllib3==1.26.14",
+        "idna",
+        "numpy",
+        "pandas",
+        "pyarrow",
+        "python-dateutil",
+        "pytz",
+        "requests",
+        "six",
+        "soupsieve",
+        "tqdm",
+        "urllib3",
         ],
     entry_points={
         "console_scripts": [
