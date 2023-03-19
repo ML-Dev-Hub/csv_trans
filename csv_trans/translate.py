@@ -1,6 +1,11 @@
 from deep_translator import GoogleTranslator
-from utils import read_csv_file, find_encoding_scheme, api_translate, save_csv_file, process_dataframe
+from .utils import read_csv_file, find_encoding_scheme, save_csv_file, process_dataframe, is_valid_dataframe
 from tqdm import tqdm
+
+
+
+__all__ = ['translate', 'main']
+
 
 # Get the list of supported languages
 translator = GoogleTranslator()
@@ -9,21 +14,34 @@ supported_languages = translator.get_supported_languages(as_dict=True).keys()
 
 def translate(file, source_language, target_language, sep=','):
     """
-    Input: file, target_language
+    Input: file, source_language, target_language, sep
     Output: translated data
     Description: This function will translate the data into the target language using google translator api
     """
 
+    if source_language not in supported_languages:
+        print("Source language is not supported")
+        print("Supported languages are: ", ", ".join(i for i in supported_languages))
+        return
+
+    if target_language not in supported_languages:
+        print("Target language is not supported")
+        print("Supported languages are: ", ", ".join(i for i in supported_languages))
+        return
+    
+    
     encoding_scheme = find_encoding_scheme(file)
     data = read_csv_file(file, encoding_scheme, sep=sep)
+    
+    ## data validation
+    if not is_valid_dataframe(data):
+        print("Data is not valid")
+        return
 
     # Display a waiting message while the function is executing
     with tqdm(total=1, desc="Translating DataFrame") as pbar:
         data = process_dataframe(data, source_language, target_language)
         pbar.update()
-
-    for col in tqdm(data.columns, desc="Translating Columns"):
-        data[col] = data[col].apply(lambda x: api_translate(x, source_language, target_language))
 
     # save the data to the csv file
     save_csv_file(data, file, encoding_scheme)
@@ -60,5 +78,4 @@ def main():
     translate(args.file_path, args.source_language, args.target_language, args.file_separator)
 
 
-if __name__ == "__main__":
-    main()
+

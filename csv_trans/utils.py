@@ -16,6 +16,11 @@ warnings.filterwarnings("ignore")
 
 # function for splitting the text into chunks of given size
 def split_text(text, chunk_size):
+    """
+    Input: text (data), chunk_size
+    Output: list containing chunks of the input data of mentioned chunk_size
+    Description: This function will split the input data into a fixed chunk size
+    """
     chunks = []
     start = 0
     end = chunk_size
@@ -143,6 +148,18 @@ def process_dataframe(df, source_language, target_language):
     # Concatenate the resulting columns back together into a new DataFrame
     result_df = pd.concat(processed_columns, axis=1)
     return result_df
+
+## data validation functions
+def is_valid_dataframe(data):
+    """
+    Input: data
+    Output: True/False
+    Description: This function will check if the data is valid dataframe or not and is not empty
+    """
+    if isinstance(data, pd.DataFrame) and not data.empty:
+        return True
+    return False
+
 
 
 # function for changing the ip address of the system
