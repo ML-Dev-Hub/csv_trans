@@ -149,6 +149,18 @@ def process_dataframe(df, source_language, target_language):
     result_df = pd.concat(processed_columns, axis=1)
     return result_df
 
+## data validation functions
+def is_valid_dataframe(data):
+    """
+    Input: data
+    Output: True/False
+    Description: This function will check if the data is valid dataframe or not and is not empty
+    """
+    if isinstance(data, pd.DataFrame) and not data.empty:
+        return True
+    return False
+
+
 
 # function for changing the ip address of the system
 def change_ip_address():
