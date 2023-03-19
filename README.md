@@ -6,7 +6,6 @@ This package is used to translate csv files across different languages. It uses 
 pip install csv-trans
 ```
 
-## How to use it?
 You can use the package in two ways:
 1. Using the command line interface (CLI)
 2. Using the import utility in your python code.

@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = '0.0.2'
+VERSION = '0.0.3'
 DESCRIPTION = "A package for translating csv files across multiple languages"
 
 LONG_DESCIPTION = """
@@ -16,6 +16,7 @@ pip install csv-trans
 ```
 
 ## How to use it?
+
 You can use the package in two ways:
 1. Using the command line interface (CLI)
 2. Using the import utility in your python code.
@@ -36,6 +37,7 @@ translate(file, source_language, target_language, sep=',')
 ```
 
 For Further information, checkout our [GitHub Page](https://github.com/ML-Dev-Hub/universal-translator-for-csv-files).
+
      
 ## Contributors ✨
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
@@ -86,7 +88,7 @@ setup(
         "six",
         "soupsieve",
         "tqdm",
-        "urllib3"
+        "urllib3",
         ],
     entry_points={
         "console_scripts": [
