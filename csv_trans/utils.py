@@ -16,6 +16,11 @@ warnings.filterwarnings("ignore")
 
 # function for splitting the text into chunks of given size
 def split_text(text, chunk_size):
+    """
+    Input: text (data), chunk_size
+    Output: list containing chunks of the input data of mentioned chunk_size
+    Description: This function will split the input data into a fixed chunk size
+    """
     chunks = []
     start = 0
     end = chunk_size
