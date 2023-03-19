@@ -20,8 +20,6 @@ You can use it in two ways:
     translate(file, source_language, target_language, sep=',')
     ```
 
-
-For Further information, checkout our Github page: 	https://github.com/ML-Dev-Hub/universal-translator-for-csv-files
     
      
 ## Contributors 
