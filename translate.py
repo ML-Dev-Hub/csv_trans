@@ -44,13 +44,16 @@ def main():
     parser.add_argument('--target_language', type=str, required=True, help='target language')
     args = parser.parse_args()
 
+    wrong_args = False
     if args.source_language not in supported_languages:
         print("Source language is not supported")
-        print("Supported languages are: ", ", ".join(i for i in supported_languages))
-        return
+        wrong_args = True
 
     if args.target_language not in supported_languages:
         print("Target language is not supported")
+        wrong_args = True
+
+    if wrong_args:
         print("Supported languages are: ", ", ".join(i for i in supported_languages))
         return
 
