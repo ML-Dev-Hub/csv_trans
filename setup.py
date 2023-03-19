@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = '0.0.2'
+VERSION = '0.0.3'
 DESCRIPTION = "A package for translating csv files across multiple languages"
 
 LONG_DESCIPTION = """
@@ -18,7 +18,7 @@ You can use it in two ways:
 2. Using the import utility in your python code
     You can import the package and use the translate function to translate your csv file. You can use dogstrings to get more information about the function.
     For example:
-    ```from translate import translate```
+    ```from csv_trans import translate```
     ```translate(file, source_language, target_language, sep=',')```
 
 
