@@ -20,7 +20,7 @@ You can use it in two ways:
 For Further information, checkout our Github page: 	https://github.com/ML-Dev-Hub/universal-translator-for-csv-files
     
      
-## Contributors ✨
+## Contributors 
 
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->

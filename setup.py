@@ -13,10 +13,7 @@ setup (
     description=DESCRIPTION,
     long_description=open('README.md').read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/ML-Dev-Hub/universal-translator-for-csv-files"
-    project_urls={
-        "Bug Tracker": "https://github.com/ML-Dev-Hub/universal-translator-for-csv-files/issues",
-    }
+    url="https://github.com/ML-Dev-Hub/universal-translator-for-csv-files",
     packages=find_packages(),
     python_requires=">=3.6",
     install_requires=[
@@ -46,8 +43,8 @@ setup (
     },
     keywords=['python', 'csv', 'translate', 'translator', 'google', 'google translator', 'google translate', 'translate csv'],
     classifiers=[
-        "Programming Language :: Python :: 3"
-        "Intended Audience :: Developers :: Science/Research :: ML Engineers :: Data Scientists",
+        "Programming Language :: Python :: 3",
+        "Intended Audience :: Developers",
         "Operating System :: OS Independent",
         "License :: OSI Approved :: MIT License",
     ],
