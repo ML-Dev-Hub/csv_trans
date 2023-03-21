@@ -1,4 +1,8 @@
 # Universal Translator for csv files
+
+[![Downloads](https://static.pepy.tech/personalized-badge/csv-trans?period=total&units=international_system&left_color=black&right_color=orange&left_text=Downloads)](https://pepy.tech/project/csv-trans)
+
+
 This package is used to translate csv files across different languages. It uses the Google Translate API to translate the csv files from a source language to a target language. Supported languages are listed [here](https://cloud.google.com/translate/docs/languages). The package can handle csv files with multiple columns and rows and can translate the whole file in one go, saving your time and effort. 
 
 ## Installation
