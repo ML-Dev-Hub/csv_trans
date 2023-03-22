@@ -1,6 +1,6 @@
 # Universal Translator for csv files
 
-[![Downloads](https://static.pepy.tech/personalized-badge/csv-trans?period=total&units=international_system&left_color=grey&right_color=brightgreen&left_text=Downloads)](https://pepy.tech/project/csv-trans)    ![PyPI](https://img.shields.io/pypi/v/csv-trans)   ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/csv-trans)
+[![Downloads](https://static.pepy.tech/personalized-badge/csv-trans?period=total&units=international_system&left_color=grey&right_color=brightgreen&left_text=Downloads)](https://pepy.tech/project/csv-trans)    [![PyPI](https://img.shields.io/pypi/v/csv-trans)](https://pypi.org/project/csv-trans/)   [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/csv-trans)](https://pypi.org/project/csv-trans/)
 
 
 
