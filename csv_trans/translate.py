@@ -9,7 +9,22 @@ __all__ = ['translate', 'main']
 def translate(file: str, source_lang: str, target_lang: str, sep: str = ',') -> None:
     """
     Translates the data in the file to the target language and saves the result
+
+    ----------------
+        Parameters:
+            file: str
+                The path to the file
+            source_lang: str
+                The source language of the data
+            target_lang: str
+                The target language to translate the data to
+            sep: str
+                The separator of the file
+    ----------------
+        Returns:
+            None                
     """
+
     encoding_scheme = detect_encoding_scheme(file)
     # read the data from the csv file
     data = read_csv_file(file, encoding_scheme, sep)
@@ -27,7 +42,7 @@ def translate(file: str, source_lang: str, target_lang: str, sep: str = ',') -> 
         pbar.update()
 
     # save the data to the csv file
-    save_csv_file(data, file, encoding_scheme)
+    save_csv_file(data, file, encoding_scheme, target_lang)
 
 
 # make file_separator optional
