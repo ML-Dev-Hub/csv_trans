@@ -206,7 +206,7 @@ def read_csv_file(file_path, encoding_scheme, separator=','):
         return None
 
 
-def save_csv_file(df, file_path, encoding_scheme):
+def save_csv_file(df, file_path, encoding_scheme, target_language):
     """
     Save a pandas DataFrame to a CSV file
 
@@ -218,13 +218,15 @@ def save_csv_file(df, file_path, encoding_scheme):
             The full path including the filename of the output file
         encoding_scheme: str
             The encoding scheme to use when saving the CSV file
+        target_language: str
+            The target language of the translated text
     """
 
     path = os.path.dirname(file_path)
     file_name = os.path.basename(file_path)
     try:
-        df.to_csv(os.path.join(path, "translated_" + file_name), encoding=encoding_scheme, index=False)
+        df.to_csv(os.path.join(path, "translated_" + target_language + '_' + file_name), encoding=encoding_scheme, index=False)
     except UnicodeEncodeError:
-        df.to_csv(os.path.join(path, "translated_" + file_name), encoding='utf-8', index=False)
+        df.to_csv(os.path.join(path, "translated_" + target_language + '_' + file_name), encoding='utf-8', index=False)
     except Exception as e:
         print(f"Error saving file {file_name}: {e}")
