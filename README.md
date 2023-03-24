@@ -33,7 +33,7 @@ translate(file, source_language, target_language, sep=',')
 - open the CLI and install the package
 - Use the below command
 ```bash
- csv_trans -f <file_name> -sl <source_language> -tl <target_language> -s <file_seperator>
+ csv_trans -f <file_name> -sl <source_language> -tl <target_language> -fs <file_seperator>
 ```
 
 
