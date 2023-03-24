@@ -28,6 +28,15 @@ from csv_trans import translate
 translate(file, source_language, target_language, sep=',')
 ```
 
+
+### Using the CLI utility
+- open the CLI and install the package
+- Use the below command
+```bash
+ csv_trans -f <file_name> -sl <source_language> -tl <target_language> -s <file_seperator>
+```
+
+
 For Further information, checkout our [GitHub Page](https://github.com/ML-Dev-Hub/universal-translator-for-csv-files).
      
 ## Contributors ✨
