@@ -14,7 +14,18 @@ warnings.filterwarnings("ignore")
 
 
 def detect_encoding_scheme(file_path):
-    """Detect encoding scheme of a CSV file"""
+    """
+    Detect encoding scheme of a CSV file
+
+    --------------------
+    Parameters:
+        file_path: str
+            The path to the file
+    --------------------
+    Returns:
+        encoding_scheme: str
+            The encoding scheme of the file
+    """
     try:
         with open(file_path, 'rb') as f:
             rawdata = f.read(200)
@@ -28,6 +39,15 @@ def detect_encoding_scheme(file_path):
 def validate_dataframe(df):
     """
     Check if the data is a valid dataframe and not empty.
+
+    --------------------
+    Parameters:
+        df: pandas.DataFrame
+            The dataframe to be validated
+    --------------------
+    Returns:
+        bool
+            True if the dataframe is valid and not empty, False otherwise
     """
     if isinstance(df, pd.DataFrame) and not df.empty:
         return True
@@ -38,13 +58,23 @@ def translate_text(texts, target_language, source_language='en', chunk_size=4000
     """
     Translate the text into the target language using Google Translator API
 
-    :param texts: List of texts to be translated
-    :param source_language: The language of the input text
-    :param target_language: The target language to translate the text to
-    :param chunk_size: The size of chunk to split the input text
-    :param timeout: Timeout length for the request
-    
-    :return:
+    --------------------
+    Parameters:
+        texts: list
+            List of texts to be translated
+        source_language: str
+            The language of the input text
+        target_language: str
+            The target language to translate the text to
+        chunk_size: int
+            The size of chunk to split the input text
+        timeout: int
+            Timeout length for the request
+
+    --------------------
+    Returns:
+        translations: list
+            The list of translated texts
     """
     translations = []
 
@@ -83,9 +113,17 @@ def translate_text(texts, target_language, source_language='en', chunk_size=4000
 def split_text_data(text, chunk_size):
     """
     Split the input data/text into a fixed chunk size
-    
-    :param text: the input data to be split
-    :param chunk_size: The chunk size to split the data
+
+    ----------------
+        Parameters:
+            text: str
+                The input data to be split
+            chunk_size: int
+                The chunk size to split the data
+    ----------------
+        Returns:
+            chunks: list
+                The list of chunks
     """
     chunks = []
     start = 0
@@ -112,6 +150,19 @@ def split_text_data(text, chunk_size):
 def translate_dataframe(df, source_language, target_language):
     """
     Translate a given pandas DataFrame to a desired language
+
+    ----------------
+        Parameters:
+            df: pandas.DataFrame
+                The dataframe to be translated
+            source_language: str
+                The language of the input text
+            target_language: str
+                The target language to translate the text to
+    ----------------
+        Returns:
+            result_df: pandas.DataFrame
+                The translated dataframe
     """
     # Determine the number of threads to use based on the number of available CPU cores
     num_threads = min(cpu_count(), len(df.columns))
@@ -132,11 +183,21 @@ def translate_dataframe(df, source_language, target_language):
 def read_csv_file(file_path, encoding_scheme, separator=','):
     """
     Read a CSV file using the given encoding scheme and delimiter
-    
-    :param file_path: the path to the input file
-    :param encoding_scheme: the encoding to use when reading the file
-    :param separator: the delimiter to use when reading the CSV file
+
+    ----------------
+        Parameters:
+            file_path: str
+                The path to the input file
+            encoding_scheme: str
+                The encoding to use when reading the file
+            separator: str
+                The delimiter to use when reading the CSV file
+    ----------------
+        Returns:
+            data: pandas.DataFrame
+                The DataFrame containing the data from the CSV file
     """
+
     try:
         data = pd.read_csv(file_path, encoding=encoding_scheme, sep=separator, engine='pyarrow')
         return data
@@ -145,20 +206,27 @@ def read_csv_file(file_path, encoding_scheme, separator=','):
         return None
 
 
-def save_csv_file(df, file_path, encoding_scheme):
+def save_csv_file(df, file_path, encoding_scheme, target_language):
     """
     Save a pandas DataFrame to a CSV file
-    
-    :param df: the DataFrame to be saved as CSV
-    :param file_path: the full path including the filename of the output file
-    :param encoding_scheme: the encoding scheme to use when saving the CSV file
+
+    ----------------
+    Parameters:
+        df: pandas.DataFrame
+            The DataFrame to be saved as CSV
+        file_path: str
+            The full path including the filename of the output file
+        encoding_scheme: str
+            The encoding scheme to use when saving the CSV file
+        target_language: str
+            The target language of the translated text
     """
 
     path = os.path.dirname(file_path)
     file_name = os.path.basename(file_path)
     try:
-        df.to_csv(os.path.join(path, "translated_" + file_name), encoding=encoding_scheme, index=False)
+        df.to_csv(os.path.join(path, "translated_" + target_language + '_' + file_name), encoding=encoding_scheme, index=False)
     except UnicodeEncodeError:
-        df.to_csv(os.path.join(path, "translated_" + file_name), encoding='utf-8', index=False)
+        df.to_csv(os.path.join(path, "translated_" + target_language + '_' + file_name), encoding='utf-8', index=False)
     except Exception as e:
         print(f"Error saving file {file_name}: {e}")

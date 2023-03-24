@@ -92,7 +92,7 @@ setup(
         ],
     entry_points={
         "console_scripts": [
-            "csv_trans = csv_trans.__main__:cli"
+            "csv_trans = csv_trans.cli:main"
         ]
     },
     keywords=['python', 'csv', 'translate', 'translator', 'google',
