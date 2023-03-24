@@ -39,6 +39,8 @@ For Further information, checkout our [GitHub Page](https://github.com/ML-Dev-Hu
     <tr>
       <td align="center"><a href="https://github.com/saeedahmadicp"><img src="https://avatars.githubusercontent.com/saeedahmadicp?v=4?s=100" width="100px;" alt="Saeed Ahmad"/><br /><sub><b>Saeed Ahmad</b></sub></a><br /><a href="https://github.com/ML-Dev-Hub/universal-translator-for-csv-files/commits?author=saeedahmadicp" title="Code">💻</a> <a href="https://github.com/ML-Dev-Hub/universal-translator-for-csv-files/commits?author=saeedahmadicp" title="Documentation">📖</a></td>
       <td align="center"><a href="https://github.com/ali-izhar"><img src="https://avatars3.githubusercontent.com/ali-izhar?v=4?s=100" width="100px;" alt="Izhar Ali"/><br /><sub><b>Izhar Ali</b></sub></a><br /><a href="https://github.com/ML-Dev-Hub/universal-translator-for-csv-files/commits?author=ali-izhar" title="Code">💻</a><a href="https://github.com/ML-Dev-Hub/universal-translator-for-csv-files/commits?author=ali-izhar" title="Documentation">📖</a></td></td>
+ 
+ <td align="center"><a href="https://github.com/Laughing-Kid"><img src="https://avatars3.githubusercontent.com/Laughing-Kid?v=4?s=100" width="100px;" alt="Shaharyar Sajid"/><br /><sub><b>Shaharyar Sajid</b></sub></a><br /><a href="https://github.com/ML-Dev-Hub/universal-translator-for-csv-files/commits?author=Laughing-Kid" title="Code">💻</a><a </td></td>
  </tr>
   </tbody>
 </table>
