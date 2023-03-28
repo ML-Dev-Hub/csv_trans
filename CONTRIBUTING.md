@@ -1,6 +1,6 @@
 # Contributing Guidelines
 
-Thank you for considering contributing to our project! We appreciate your interest in helping us improve our software.
+Thank you for considering contributing to our project! We appreciate your interest in helping us improve our package.
 
 To get started, please follow these steps:
 
