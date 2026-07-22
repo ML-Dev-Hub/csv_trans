@@ -1,38 +1,51 @@
 ---
 name: Bug report
-about: Create a report to help us improve
-title: ''
-labels: ''
-assignees: ''
+about: Report a reproducible csv-trans defect
+title: "[Bug]: "
+labels: bug
+assignees: ""
 
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+# Before submitting
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+- Search existing issues first.
+- Use synthetic CSV text. Do not attach confidential data, API keys,
+  authorization headers, or unredacted provider responses.
+- Report security vulnerabilities privately as described in `SECURITY.md`.
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## Environment
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+- csv-trans version:
+- Python version:
+- Operating system:
+- Installation method:
+- Provider ID:
+- Privacy mode:
 
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+## Reproduction
 
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+Provide the smallest synthetic CSV and Python snippet or CLI command that
+reproduces the problem. Replace secrets with `<redacted>`.
 
-**Additional context**
-Add any other context about the problem here.
+```text
+# synthetic input
+```
+
+```text
+# command or Python snippet
+```
+
+## Expected behavior
+
+What should have happened?
+
+## Actual behavior
+
+Include the exit code, result status, sanitized traceback, and failure category
+when available. Never include source cell contents from a real dataset.
+
+## Additional context
+
+Mention encoding, delimiter, selected columns, local model server, or network
+conditions when relevant.

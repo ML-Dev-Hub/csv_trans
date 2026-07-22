@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "csv-trans"
+version = "2.0.0"
+description = "Dependency-free CSV translation with pluggable remote and local providers"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+  { name = "Saeed Ahmad", email = "saeedahmad.icp@gmail.com" },
+]
+keywords = [
+  "csv",
+  "translation",
+  "local-llm",
+  "openai-compatible",
+  "anthropic",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Text Processing :: Linguistic",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/ML-Dev-Hub/csv_trans"
+Documentation = "https://github.com/ML-Dev-Hub/csv_trans#readme"
+Changelog = "https://github.com/ML-Dev-Hub/csv_trans/blob/main/CHANGELOG.md"
+Issues = "https://github.com/ML-Dev-Hub/csv_trans/issues"
+Security = "https://github.com/ML-Dev-Hub/csv_trans/security/policy"
+Source = "https://github.com/ML-Dev-Hub/csv_trans"
+
+[project.scripts]
+csv-trans = "csv_trans.cli:main"
+csv_trans = "csv_trans.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["csv_trans", "csv_trans.*"]
+exclude = ["tests", "tests.*"]
+
+[tool.setuptools.package-data]
+csv_trans = ["py.typed"]

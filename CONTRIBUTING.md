@@ -1,23 +1,39 @@
-# Contributing Guidelines
+# Contributing to csv-trans
 
-Thank you for considering contributing to our project! We appreciate your interest in helping us improve our package.
+Thank you for helping improve `csv-trans`. Version 2 keeps its production
+runtime dependency-free, so proposals that add a mandatory package should first
+explain why the capability cannot be implemented safely with the standard
+library or as an optional integration.
 
-To get started, please follow these steps:
+## Development setup
 
-- Fork the repository on GitHub.
+Use any supported CPython version from 3.11 through 3.14:
 
-- Clone the forked repository to your local machine using the `git clone` command.
+```bash
+python -m venv .venv
+python -m pip install --upgrade pip
+python -m pip install -e .
+python -m unittest discover -s tests -v
+```
 
-- Create a new branch to work on using the `git checkout -b <branch-name>` command. Please give your branch a descriptive name that relates to the changes you plan to make.
+See [TESTING.md](TESTING.md) for Windows commands, packaging checks, and the
+full local test bed.
 
-- Make the necessary changes to the code in your local repository.
+## Pull requests
 
-- Test your changes thoroughly to make sure they work as expected.
+1. Fork the repository and create a focused branch.
+2. Add or update deterministic tests for every behavior change.
+3. Run the offline unit suite. Normal tests must not contact a provider.
+4. Update the README, migration guide, and changelog when public behavior
+   changes.
+5. Open a pull request describing the problem, approach, privacy implications,
+   and verification performed.
 
-- Commit your changes using the `git commit` command. Please provide a detailed commit message that explains the changes you have made.
+Provider changes must preserve stable item IDs, output ordering, bounded retry
+behavior, privacy-mode enforcement, and redaction of credentials and cell text.
+Use synthetic strings in tests and examples.
 
-- Push your changes to your branch on GitHub using the `git push origin <branch-name>` command.
+## Reporting problems
 
-- Finally, create a pull request (PR) on GitHub. In your PR, please provide the details of the changes you have made and any relevant information that might help us understand your contribution better.
-
-We appreciate your time and effort in contributing to our project. Thank you!
+Use the issue templates for ordinary bugs and feature requests. Report security
+issues privately as described in [SECURITY.md](SECURITY.md).

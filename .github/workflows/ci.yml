@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package without dependencies
+        run: python -m pip install --no-deps .
+
+      - name: Run offline standard-library tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Verify console entry points
+        run: |
+          csv-trans --help
+          csv_trans --help
+
+      - name: Run an offline installed-CLI translation
+        run: |
+          python -c "from pathlib import Path; Path('cli-smoke.csv').write_text('id,text\n1,hello\n', encoding='utf-8')"
+          csv-trans -f cli-smoke.csv -sl en -tl fr --provider echo --columns text --output cli-smoke.out.csv --report cli-smoke.report.json --privacy local-only --quiet
+          python -c "import csv, json; rows = list(csv.reader(open('cli-smoke.out.csv', encoding='utf-8', newline=''))); report = json.load(open('cli-smoke.report.json', encoding='utf-8')); assert rows == [['id', 'text'], ['1', 'hello']]; assert report['status'] == 'success'; assert report['provider_attempts'][0]['provider'] == 'echo'"
+
+  package:
+    name: Build and install distributions
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.14"
+
+      - name: Install build frontend
+        run: python -m pip install build==1.5.0
+
+      - name: Build wheel and source distribution
+        run: python -m build
+
+      - name: Install the wheel without dependencies
+        run: >-
+          python -c "import glob, subprocess, sys;
+          wheels = glob.glob('dist/*.whl');
+          assert len(wheels) == 1, wheels;
+          subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--no-deps', wheels[0]])"
+
+      - name: Smoke-test installed metadata outside the checkout
+        working-directory: ${{ runner.temp }}
+        run: |
+          python -c "import importlib.metadata as m; assert m.version('csv-trans') == '2.0.0'; assert not (m.requires('csv-trans') or [])"
+          python -c "from importlib.resources import files; assert files('csv_trans').joinpath('py.typed').is_file()"
+          python -m pip check
+          csv-trans --help
+          csv_trans --help
+
+      - name: Smoke-test the installed wheel offline
+        working-directory: ${{ runner.temp }}
+        run: |
+          python -c "from pathlib import Path; Path('wheel-smoke.csv').write_text('id,text\n1,hello\n', encoding='utf-8')"
+          csv-trans -f wheel-smoke.csv -sl en -tl fr --provider echo --columns text --output wheel-smoke.out.csv --privacy local-only --quiet
+          python -c "import csv; rows = list(csv.reader(open('wheel-smoke.out.csv', encoding='utf-8', newline=''))); assert rows == [['id', 'text'], ['1', 'hello']]"
+
+      - name: Create an isolated source-distribution environment
+        run: python -m venv "${RUNNER_TEMP}/csv-trans-sdist"
+
+      - name: Install the source distribution without runtime dependencies
+        shell: bash
+        run: |
+          sdists=(dist/*.tar.gz)
+          test "${#sdists[@]}" -eq 1
+          test -f "${sdists[0]}"
+          "${RUNNER_TEMP}/csv-trans-sdist/bin/python" -m pip install --no-deps "${sdists[0]}"
+
+      - name: Smoke-test the installed source distribution offline
+        working-directory: ${{ runner.temp }}
+        shell: bash
+        run: |
+          "${RUNNER_TEMP}/csv-trans-sdist/bin/python" -c "import importlib.metadata as m; assert m.version('csv-trans') == '2.0.0'; assert not (m.requires('csv-trans') or [])"
+          "${RUNNER_TEMP}/csv-trans-sdist/bin/python" -c "from pathlib import Path; Path('sdist-smoke.csv').write_text('id,text\n1,hello\n', encoding='utf-8')"
+          "${RUNNER_TEMP}/csv-trans-sdist/bin/csv-trans" -f sdist-smoke.csv -sl en -tl fr --provider echo --columns text --output sdist-smoke.out.csv --privacy local-only --quiet
+          "${RUNNER_TEMP}/csv-trans-sdist/bin/python" -c "import csv; rows = list(csv.reader(open('sdist-smoke.out.csv', encoding='utf-8', newline=''))); assert rows == [['id', 'text'], ['1', 'hello']]"

@@ -1,20 +1,34 @@
 ---
 name: Feature request
-about: Suggest an idea for this project
-title: ''
-labels: ''
-assignees: ''
+about: Propose a focused csv-trans improvement
+title: "[Feature]: "
+labels: enhancement
+assignees: ""
 
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+## Problem
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+Describe the user problem and why current behavior or configuration cannot solve
+it.
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+## Proposed behavior
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+Describe the desired Python API or CLI behavior, including defaults and failure
+semantics.
+
+## Privacy and dependency impact
+
+- Does this send CSV content to a new host or provider?
+- How should `public`, `restricted`, and `local-only` behave?
+- Does it require a mandatory dependency? If so, why can it not be optional or
+  implemented with the standard library?
+- Could it create provider cost, quota, or retry risks?
+
+## Alternatives
+
+List alternatives or workarounds you considered.
+
+## Additional context
+
+Use synthetic examples only and remove credentials or customer data.
