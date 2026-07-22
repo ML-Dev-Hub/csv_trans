@@ -1,0 +1,39 @@
+---
+title: Reference
+description: The complete public surface of csv-trans — the Python API and the command-line interface.
+---
+
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+The reference documents the complete public surface of csv-trans. Everything
+here is verified against the source of the current release; anything not listed
+is internal and may change without notice.
+
+<CardGrid>
+  <LinkCard
+    title="Python API"
+    description="translate() and translate_csv(), TranslationConfig with every option and default, TranslationResult, and the provider protocol."
+    href="/csv_trans/reference/python-api/"
+  />
+  <LinkCard
+    title="CLI"
+    description="The csv-trans command: every flag and default, provider IDs, environment variables, and exit codes."
+    href="/csv_trans/reference/cli/"
+  />
+</CardGrid>
+
+## Conventions
+
+**Exit codes.** The CLI exits `0` on success or a dry run, `2` when a run
+completes partially (some cells kept their original text after all recovery),
+and `1` on failure or invalid usage.
+
+**Credentials.** Secrets are never accepted on the command line. Each provider
+reads its API key from an environment variable —
+`CSV_TRANS_<PROVIDER>_API_KEY`, with `--api-key-env` to name a different
+variable. Model and endpoint defaults follow the same pattern
+(`CSV_TRANS_<PROVIDER>_MODEL`, `CSV_TRANS_<PROVIDER>_BASE_URL`).
+
+**Compatibility.** The 1.x calling interface — `translate(file, source_lang,
+target_lang, sep)` and the programmatic `main()` helper — continues to work on
+the v2 engine. Interface compatibility is exact; behavior is v2's.

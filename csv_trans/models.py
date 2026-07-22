@@ -15,7 +15,9 @@ import math
 import os
 from pathlib import Path
 import tempfile
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Callable, Sequence
+
+from .csvio import fsync_parent_directory
 
 
 def _report_destination(path: str | Path) -> Path:
@@ -122,14 +124,14 @@ class TranslationConfig:
                 raise ValueError(f"privacy must be one of: {choices}") from exc
         elif not isinstance(self.privacy, PrivacyMode):
             raise ValueError("privacy must be a PrivacyMode or its string value")
-        if self.delimiter is not None:
-            if not isinstance(self.delimiter, str) or (
-                len(self.delimiter) != 1
-                or self.delimiter in {"\r", "\n", "\0"}
-            ):
-                raise ValueError(
-                    "delimiter must be one non-newline, non-NUL character"
-                )
+        if self.delimiter is not None and (
+            not isinstance(self.delimiter, str)
+            or len(self.delimiter) != 1
+            or self.delimiter in {"\r", "\n", "\0"}
+        ):
+            raise ValueError(
+                "delimiter must be one non-newline, non-NUL character"
+            )
         positive_integers = (
             "sample_rows",
             "batch_size",
@@ -167,6 +169,17 @@ class TranslationConfig:
             self.output_encoding = codecs.lookup(self.output_encoding).name
         except (LookupError, TypeError) as exc:
             raise ValueError(f"unknown output_encoding: {self.output_encoding}") from exc
+        if self.encoding is not None:
+            # Validate symmetrically with output_encoding, but preserve the
+            # detect-mode inputs that csvio.detect_encoding interprets: the
+            # "auto"/"detect" sentinels and a falsy/empty value all mean detect.
+            if not isinstance(self.encoding, str):
+                raise ValueError("encoding must be a string or None")
+            if self.encoding and self.encoding.lower() not in {"auto", "detect"}:
+                try:
+                    codecs.lookup(self.encoding)
+                except LookupError as exc:
+                    raise ValueError(f"unknown encoding: {self.encoding}") from exc
         if self.snapshot_directory is not None:
             try:
                 self.snapshot_directory = Path(self.snapshot_directory).expanduser()
@@ -182,11 +195,22 @@ class TranslationConfig:
             self.approved_local_hosts, name="approved_local_hosts"
         )
         if self.columns is not None:
-            self.columns = (
+            items = (
                 (self.columns,)
                 if isinstance(self.columns, str)
                 else tuple(self.columns)
             )
+            for item in items:
+                # bool is an int subclass; reject it so columns=[True] cannot be
+                # read as "select column 1". Validate eagerly for a consistent
+                # fail-fast ValueError instead of a late TypeError at resolution.
+                if isinstance(item, bool) or not isinstance(item, (str, int)):
+                    raise ValueError(
+                        "columns must contain column names or zero-based integer indexes"
+                    )
+                if isinstance(item, str) and not item.strip():
+                    raise ValueError("columns must not contain empty names")
+            self.columns = items
         for name in ("progress_callback", "cancellation_check"):
             value = getattr(self, name)
             if value is not None and not callable(value):
@@ -214,7 +238,6 @@ class ColumnSelection:
     name: str
     selected: bool
     reason: str
-    confidence: float = 1.0
 
 
 @dataclass(slots=True)
@@ -357,6 +380,10 @@ class TranslationResult:
                 os.link(temporary, destination)
             self.report_path = destination
             published = True
+            # Best-effort durability for the just-published entry (shared helper).
+            warning = fsync_parent_directory(destination)
+            if warning is not None and warning not in self.warnings:
+                self.warnings.append(warning)
         except FileExistsError as exc:
             failure = FileExistsError(
                 f"report already exists: {destination}; pass overwrite=True to replace it"
@@ -383,15 +410,11 @@ class TranslationResult:
         return destination
 
 
-ProviderOptions = Mapping[str, Any]
-
-
 __all__ = [
     "ColumnSelection",
     "PrivacyMode",
     "ProgressEvent",
     "ProviderAttempt",
-    "ProviderOptions",
     "RunStatus",
     "TranslationConfig",
     "TranslationFailure",

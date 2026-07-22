@@ -64,9 +64,14 @@ def validate_endpoint(
         raise ProviderConfigurationError(
             "Provider endpoint must include a host", provider=provider
         )
-    if any(character.isspace() for character in host):
+    if any(
+        character.isspace() or not character.isprintable() for character in host
+    ):
+        # urlsplit strips only \t\r\n; other C0 controls and DEL would otherwise
+        # survive into the netloc. Reject any whitespace or non-printable byte.
         raise ProviderConfigurationError(
-            "Provider endpoint host must not contain whitespace", provider=provider
+            "Provider endpoint host must not contain whitespace or control characters",
+            provider=provider,
         )
     if (
         parsed.scheme.casefold() == "http"

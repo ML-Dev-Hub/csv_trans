@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" role="img" aria-label="csv-trans">
+  <!-- The tilde: the diacritic translation adds, and the shell's home.
+       One tile, one glyph. Identical in both themes. -->
+  <rect x="1.2" y="1.2" width="21.6" height="21.6" rx="5.8" fill="#4655D8"/>
+  <path d="M4.8 13.9C6.6 10.1 9.8 9.9 12 12.1C14.2 14.3 17.4 14.1 19.2 10.3" stroke="#FFFFFF" stroke-width="2.7" stroke-linecap="round" fill="none"/>
+</svg>

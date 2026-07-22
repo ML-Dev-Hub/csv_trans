@@ -9,13 +9,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from html.parser import HTMLParser
-import math
 from typing import Any
 from urllib.parse import urlencode
 
 from csv_trans.exceptions import (
     ProviderAuthenticationError,
-    ProviderConfigurationError,
     ProviderConnectionError,
     ProviderContextLimitError,
     ProviderError,
@@ -29,8 +27,9 @@ from csv_trans.exceptions import (
 from ._common import (
     decode_json_response,
     raise_for_status,
-    scrub_provider_error,
+    scrubbed_provider_call,
     send_request,
+    validate_timeout,
     validate_translation_request,
 )
 from .base import HttpClient, TranslationItem, UrllibHttpClient
@@ -38,63 +37,66 @@ from .endpoints import is_remote_endpoint, validate_endpoint
 
 
 class _MobileTranslationParser(HTMLParser):
-    """Extract Google mobile's translated result without Beautiful Soup."""
+    """Extract Google mobile's translated result without Beautiful Soup.
 
-    _VOID_ELEMENTS = {
-        "area",
-        "base",
-        "br",
-        "col",
-        "embed",
-        "hr",
-        "img",
-        "input",
-        "link",
-        "meta",
-        "param",
-        "source",
-        "track",
-        "wbr",
-    }
+    Capture is bounded by ``<div>`` nesting alone: only the matching ``</div>``
+    that closes the result container ends capture. Counting divs (rather than
+    every element) means an unclosed inner formatting tag cannot run capture off
+    the end of the page into footer/script text, and a stray non-div end tag
+    cannot prematurely truncate the translation. ``<script>``/``<style>`` bodies
+    are suppressed so page code never contaminates the result.
+    """
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
-        self._capture_depth = 0
+        self._div_depth = 0
+        self._suppress_depth = 0
         self._finished = False
         self._parts: list[str] = []
 
     @property
     def translation(self) -> str | None:
-        if not self._parts:
+        # Require the result container to have closed cleanly. A truncated or
+        # malformed response that leaves the container open at EOF must not be
+        # published as a complete translation replacing a selected field.
+        if not self._finished or not self._parts:
             return None
         return "".join(self._parts)
 
     def handle_starttag(
         self, tag: str, attrs: list[tuple[str, str | None]]
     ) -> None:
-        normalized_tag = tag.casefold()
         if self._finished:
             return
-        if self._capture_depth:
-            if normalized_tag not in self._VOID_ELEMENTS:
-                self._capture_depth += 1
+        normalized_tag = tag.casefold()
+        if self._div_depth:
+            if normalized_tag in {"script", "style"}:
+                self._suppress_depth += 1
+            elif normalized_tag == "div":
+                self._div_depth += 1
             return
         if normalized_tag != "div":
             return
         attributes = dict(attrs)
         classes = (attributes.get("class") or "").split()
         if "result-container" in classes or "t0" in classes:
-            self._capture_depth = 1
+            self._div_depth = 1
 
     def handle_endtag(self, tag: str) -> None:
-        if not self._capture_depth or tag.casefold() in self._VOID_ELEMENTS:
+        if self._finished or not self._div_depth:
             return
-        self._capture_depth -= 1
-        if self._capture_depth == 0:
-            self._finished = True
+        normalized_tag = tag.casefold()
+        if self._suppress_depth:
+            if normalized_tag in {"script", "style"}:
+                self._suppress_depth -= 1
+            return
+        if normalized_tag == "div":
+            self._div_depth -= 1
+            if self._div_depth == 0:
+                self._finished = True
 
     def handle_data(self, data: str) -> None:
-        if self._capture_depth:
+        if self._div_depth and not self._suppress_depth:
             self._parts.append(data)
 
 
@@ -114,16 +116,7 @@ class GoogleFreeProvider:
         timeout: float = 10.0,
         allow_html_fallback: bool = True,
     ) -> None:
-        if (
-            isinstance(timeout, bool)
-            or not isinstance(timeout, (int, float))
-            or not math.isfinite(timeout)
-            or timeout <= 0
-        ):
-            raise ProviderConfigurationError(
-                "timeout must be a finite number greater than zero",
-                provider=self.provider_id,
-            )
+        validate_timeout(timeout, provider=self.provider_id)
         self.base_url = validate_endpoint(self.PRIMARY_URL, provider=self.provider_id)
         self.fallback_url = validate_endpoint(
             self.FALLBACK_URL, provider=self.provider_id
@@ -141,6 +134,7 @@ class GoogleFreeProvider:
             return (self.base_url, self.fallback_url)
         return (self.base_url,)
 
+    @scrubbed_provider_call
     def translate(
         self,
         items: Sequence[TranslationItem],
@@ -150,19 +144,11 @@ class GoogleFreeProvider:
     ) -> list[TranslationItem]:
         """Translate items in order, using mobile HTML only after primary failure."""
 
-        try:
-            return self._translate_items(
-                items,
-                source_language=source_language,
-                target_language=target_language,
-            )
-        except ProviderError as error:
-            safe_error = scrub_provider_error(error)
-        self = None  # type: ignore[assignment]
-        items = ()
-        source_language = None
-        target_language = ""
-        raise safe_error from None
+        return self._translate_items(
+            items,
+            source_language=source_language,
+            target_language=target_language,
+        )
 
     def _translate_items(
         self,

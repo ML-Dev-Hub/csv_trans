@@ -7,41 +7,136 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import sys
-from typing import Any, Sequence
+from typing import Any, NamedTuple, Sequence
 from urllib.parse import urlsplit
 
 from . import __version__
 from .core import translate_csv
-from .models import PrivacyMode, RunStatus
+from .models import PrivacyMode, RunStatus, TranslationConfig
 
 
-_SUPPORTED_PROVIDER_IDS = {
-    "anthropic",
-    "claude",
-    "deepseek",
-    "default",
-    "echo",
-    "free",
-    "google",
-    "google-free",
-    "identity",
-    "llama.cpp",
-    "lm-studio",
-    "local",
-    "localai",
-    "ollama",
-    "openai",
-    "openai-compatible",
-    "qwen",
-    "vllm",
+class _ProviderSpec(NamedTuple):
+    """One CLI provider alias: its canonical id, family, and OpenAI env prefix."""
+
+    canonical: str
+    family: str  # "google" | "echo" | "anthropic" | "openai"
+    env_prefix: str | None = None  # OpenAI-compatible env-var prefix, if any
+
+
+# Single source of truth for every accepted --provider alias. The supported-id
+# set, alias canonicalization, and build dispatch are all derived from this.
+_PROVIDER_REGISTRY: dict[str, _ProviderSpec] = {
+    "google-free": _ProviderSpec("google-free", "google"),
+    "google": _ProviderSpec("google-free", "google"),
+    "free": _ProviderSpec("google-free", "google"),
+    "default": _ProviderSpec("google-free", "google"),
+    "echo": _ProviderSpec("echo", "echo"),
+    "identity": _ProviderSpec("echo", "echo"),
+    "anthropic": _ProviderSpec("anthropic", "anthropic"),
+    "claude": _ProviderSpec("anthropic", "anthropic"),
+    "openai": _ProviderSpec("openai", "openai", "OPENAI"),
+    "openai-compatible": _ProviderSpec("openai-compatible", "openai", "OPENAI_COMPATIBLE"),
+    "local": _ProviderSpec("local", "openai", "LOCAL"),
+    "qwen": _ProviderSpec("qwen", "openai", "QWEN"),
+    "deepseek": _ProviderSpec("deepseek", "openai", "DEEPSEEK"),
+    "ollama": _ProviderSpec("ollama", "openai", "OLLAMA"),
+    "llama.cpp": _ProviderSpec("llama.cpp", "openai", "LLAMA_CPP"),
+    "vllm": _ProviderSpec("vllm", "openai", "VLLM"),
+    "lm-studio": _ProviderSpec("lm-studio", "openai", "LM_STUDIO"),
+    "localai": _ProviderSpec("localai", "openai", "LOCALAI"),
 }
+
+_SUPPORTED_PROVIDER_IDS = frozenset(_PROVIDER_REGISTRY)
+
+
+class _RejectSecretFlagAction(argparse.Action):
+    """Trap for credential-bearing flags.
+
+    Rejects the flag WITHOUT interpolating the supplied value, so a live secret
+    passed on the command line never reaches stderr (and is not surfaced by an
+    ``unrecognized arguments`` error that would echo it). The message names only
+    the flag the user typed, never its argument.
+    """
+
+    def __call__(self, parser, namespace, values, option_string=None):  # noqa: ANN001, ARG002
+        flag = option_string or "that"
+        parser.error(
+            f"the {flag} flag is not accepted; pass credentials via the "
+            "provider's API-key environment variable, or name that variable "
+            "with --api-key-env"
+        )
+
+
+# Credential-bearing spellings a user might reach for. Registered as explicit
+# traps so argparse neither prefix-abbreviation-misroutes them (e.g. --api-key
+# onto --api-key-env) nor emits an "unrecognized arguments: <flag> <SECRET>"
+# error that echoes the value.
+_SECRET_TRAP_FLAGS: tuple[str, ...] = (
+    "--api-key",
+    "--apikey",
+    "--key",
+    "--token",
+    "--password",
+    "--secret",
+    "--bearer",
+    "-key",
+    "-token",
+    "-password",
+    "-secret",
+    "-apikey",
+    "-api-key",
+)
+
+
+class _ScrubbingArgumentParser(argparse.ArgumentParser):
+    """Parser that never echoes the VALUE of an unrecognized argument.
+
+    argparse's default ``parse_args`` reports ``unrecognized arguments: <flag>
+    <VALUE>`` verbatim. A credential passed under a spelling not in
+    ``_SECRET_TRAP_FLAGS`` (e.g. ``--api_key SECRET`` — the underscore form that
+    mirrors this tool's own ``--file_path`` convention) would otherwise leak to
+    stderr / shell history / CI logs. This override reports only the
+    option-looking tokens, with anything after ``=`` stripped, and drops bare
+    values entirely — closing the whole class rather than enumerating spellings.
+    """
+
+    def parse_args(self, args=None, namespace=None):  # type: ignore[override]
+        parsed, extras = self.parse_known_args(args, namespace)
+        if extras:
+            flags = [
+                token.split("=", 1)[0] for token in extras if token.startswith("-")
+            ] or ["<redacted>"]
+            self.error(
+                "unrecognized arguments: "
+                + " ".join(flags)
+                + " (any values omitted; pass credentials via the provider's "
+                "API-key environment variable, or name it with --api-key-env)"
+            )
+        return parsed
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = _ScrubbingArgumentParser(
         prog="csv-trans",
         description="Translate selected CSV fields while preserving row and column shape.",
+        # Disable prefix abbreviation so "--api-key SECRET" cannot bind to the
+        # only "--api-key..." option (--api-key-env) and echo SECRET as an
+        # env-var name. The v1 compat long-names (--file_path, --source_language,
+        # --target_language, --file_separator, and their hyphenated variants) are
+        # exact-match aliases, not abbreviations, so they are unaffected.
+        allow_abbrev=False,
+    )
+    # Register the credential-flag traps first so any such spelling is rejected
+    # with a non-echoing message rather than leaking the value.
+    parser.add_argument(
+        *_SECRET_TRAP_FLAGS,
+        action=_RejectSecretFlagAction,
+        nargs="?",
+        default=argparse.SUPPRESS,
+        dest="_rejected_secret_flag",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument(
@@ -177,21 +272,6 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def parse_arguments_from_cli(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
-    """Compatibility helper retained for callers that extended the old parser."""
-
-    # The old function mutated a supplied empty parser.  Recreating every alias
-    # twice invites drift, so copy the actions from the canonical parser.
-    canonical = build_parser()
-    for action in canonical._actions:  # argparse has no public action-copy API
-        if not action.option_strings or action.dest == "help":
-            continue
-        if any(option in parser._option_string_actions for option in action.option_strings):
-            continue
-        parser._add_action(action)
-    return parser
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a stable machine-readable exit code."""
 
@@ -233,11 +313,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 file=sys.stderr,
             )
 
-        result = translate_csv(
-            args.input_path,
-            args.source_language,
-            args.target_language,
-            output_path=args.output,
+        config = TranslationConfig(
+            source_language=args.source_language,
+            target_language=args.target_language,
             delimiter=args.delimiter,
             columns=args.columns,
             translate_headers=args.translate_headers,
@@ -267,6 +345,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             snapshot_directory=args.snapshot_directory,
             dry_run=args.dry_run,
         )
+        result = translate_csv(args.input_path, config, output_path=args.output)
     except Exception as exc:
         print(f"csv-trans: {exc}", file=sys.stderr)
         return 1
@@ -340,11 +419,12 @@ def _build_provider(name: str, args: argparse.Namespace, *, primary: bool) -> An
     # provider-specific environment variables; advanced chains should use the
     # Python API and explicit provider objects.
     extra_headers = _parse_headers(args.header) if primary else {}
-    if name in {"google", "google-free", "free", "default"}:
+    family = _PROVIDER_REGISTRY[name].family
+    if family == "google":
         return GoogleFreeProvider(timeout=min(args.timeout, 60.0))
-    if name in {"echo", "identity"}:
+    if family == "echo":
         return EchoProvider()
-    if name in {"anthropic", "claude"}:
+    if family == "anthropic":
         base_url = (args.base_url if primary else None) or os.environ.get(
             "CSV_TRANS_ANTHROPIC_BASE_URL"
         ) or AnthropicProvider.DEFAULT_BASE_URL
@@ -373,29 +453,8 @@ def _build_provider(name: str, args: argparse.Namespace, *, primary: bool) -> An
         }
         options["base_url"] = base_url
         return AnthropicProvider(**options)
-    if name in {
-        "openai",
-        "openai-compatible",
-        "local",
-        "qwen",
-        "deepseek",
-        "ollama",
-        "llama.cpp",
-        "vllm",
-        "lm-studio",
-        "localai",
-    }:
-        env_prefix = {
-            "deepseek": "DEEPSEEK",
-            "qwen": "QWEN",
-            "local": "LOCAL",
-            "ollama": "OLLAMA",
-            "llama.cpp": "LLAMA_CPP",
-            "vllm": "VLLM",
-            "lm-studio": "LM_STUDIO",
-            "localai": "LOCALAI",
-            "openai-compatible": "OPENAI_COMPATIBLE",
-        }.get(name, "OPENAI")
+    if family == "openai":
+        env_prefix = _PROVIDER_REGISTRY[name].env_prefix
         model = (args.model if primary else None) or os.environ.get(
             f"CSV_TRANS_{env_prefix}_MODEL"
         )
@@ -443,7 +502,7 @@ def _build_provider(name: str, args: argparse.Namespace, *, primary: bool) -> An
         provider.provider_id = name
         provider.name = name
         return provider
-    raise ValueError(f"unknown provider: {name}")
+    raise AssertionError(f"provider family not handled: {family}")  # unreachable
 
 
 def _credential(
@@ -472,10 +531,13 @@ def _parse_headers(values: Sequence[str]) -> dict[str, str]:
     sensitive = {
         "authorization",
         "proxy-authorization",
+        "www-authenticate",
         "cookie",
         "set-cookie",
         "x-api-key",
         "api-key",
+        "apikey",
+        "api_key",
     }
     for value in values:
         name, separator, header_value = value.partition("=")
@@ -483,8 +545,44 @@ def _parse_headers(values: Sequence[str]) -> dict[str, str]:
             raise ValueError("invalid --header; expected NAME=VALUE")
         normalized_name = name.strip()
         folded_name = normalized_name.casefold()
-        if folded_name in sensitive or folded_name.endswith(
-            ("-api-key", "-auth-token", "-access-token")
+        # Combine an exact set, a suffix net for the open-ended vendor space
+        # (X-Functions-Key, X-Amz-Security-Token, *-secret, ...), and a
+        # component-token check so composite names are caught too. This reduces
+        # the chance a secret is left in argv/shell history; a single-token
+        # concatenated name (e.g. "sessiontoken") can still slip through, so
+        # secrets belong in the provider API-key environment variable.
+        name_tokens = set(re.split(r"[^a-z0-9]+", folded_name))
+        secret_tokens = {
+            "secret",
+            "password",
+            "passwd",
+            "pwd",
+            "apikey",
+            "token",
+            "credential",
+            "credentials",
+            "bearer",
+        }
+        # High-signal substrings catch separator-less concatenations
+        # (e.g. "sessiontoken", "myapikey") that the component-token split
+        # cannot isolate. The value is never echoed by the rejection below.
+        high_signal_substrings = ("apikey", "token", "secret", "password", "bearer")
+        if (
+            folded_name in sensitive
+            or folded_name.endswith(
+                (
+                    "-api-key",
+                    "-apikey",
+                    "-key",
+                    "-token",
+                    "-secret",
+                    "-password",
+                    "-auth-token",
+                    "-access-token",
+                )
+            )
+            or name_tokens & secret_tokens
+            or any(marker in folded_name for marker in high_signal_substrings)
         ):
             raise ValueError(
                 f"sensitive header {normalized_name!r} is not accepted on the command line; "
@@ -508,13 +606,8 @@ def _endpoint_host(url: str) -> str | None:
 
 def _canonical_provider_name(name: str) -> str:
     normalized = name.strip().casefold()
-    return {
-        "google": "google-free",
-        "free": "google-free",
-        "default": "google-free",
-        "claude": "anthropic",
-        "identity": "echo",
-    }.get(normalized, normalized)
+    spec = _PROVIDER_REGISTRY.get(normalized)
+    return spec.canonical if spec is not None else normalized
 
 
 def _status_value(status: Any) -> str:
@@ -525,4 +618,4 @@ if __name__ == "__main__":
     raise SystemExit(main())
 
 
-__all__ = ["build_parser", "main", "parse_arguments_from_cli"]
+__all__ = ["build_parser", "main"]

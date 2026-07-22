@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from csv_trans.core import translate_csv
+from csv_trans import translate
 from csv_trans.csvio import CsvInputError, inspect_csv
 
 from tests._support import CsvTestCase, RecordingProvider, no_network
@@ -20,7 +20,7 @@ class CsvShapeAndDialectTests(CsvTestCase):
         provider = RecordingProvider(prefix="fr:")
 
         with no_network():
-            result = translate_csv(
+            result = translate(
                 source,
                 "en",
                 "fr",
@@ -47,7 +47,7 @@ class CsvShapeAndDialectTests(CsvTestCase):
         )
         output = self.path("many.fr.csv")
 
-        translate_csv(
+        translate(
             source,
             "en",
             "fr",
@@ -72,7 +72,7 @@ class CsvShapeAndDialectTests(CsvTestCase):
         )
         output = self.path("duplicates.fr.csv")
 
-        translate_csv(
+        translate(
             source,
             "en",
             "fr",
@@ -93,7 +93,7 @@ class CsvShapeAndDialectTests(CsvTestCase):
         )
         output = self.path("ragged.fr.csv")
 
-        translate_csv(
+        translate(
             source,
             "en",
             "fr",
@@ -116,7 +116,7 @@ class CsvShapeAndDialectTests(CsvTestCase):
         )
         output = self.path("quoted.fr.csv")
 
-        translate_csv(
+        translate(
             source,
             "en",
             "fr",
@@ -140,7 +140,7 @@ class CsvShapeAndDialectTests(CsvTestCase):
                     delimiter=delimiter,
                 )
                 output = self.path(f"{label}.out.csv")
-                translate_csv(
+                translate(
                     source,
                     "en",
                     "fr",
@@ -164,7 +164,7 @@ class CsvEncodingTests(CsvTestCase):
         )
         output = self.path("bom.fr.csv")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -185,7 +185,7 @@ class CsvEncodingTests(CsvTestCase):
         )
         output = self.path("utf16.fr.csv")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -206,7 +206,7 @@ class CsvEncodingTests(CsvTestCase):
         )
         output = self.path("legacy.fr.csv")
 
-        result = translate_csv(
+        result = translate(
             source,
             "fr",
             "en",
@@ -229,7 +229,7 @@ class CsvValidationTests(CsvTestCase):
         source = self.write_rows("large-field.csv", [["text"], [large_value]])
         output = self.path("large-field.out.csv")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -246,7 +246,7 @@ class CsvValidationTests(CsvTestCase):
         source = self.write_text("header-only.csv", "text")
         output = self.path("header-only.out.csv")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -261,7 +261,7 @@ class CsvValidationTests(CsvTestCase):
         source = self.write_rows("bad-delimiter.csv", [["text"], ["hello"]])
         for delimiter in ("\n", "\r", "\0"):
             with self.subTest(delimiter=repr(delimiter)), self.assertRaises(ValueError):
-                translate_csv(
+                translate(
                     source,
                     "en",
                     "fr",
@@ -279,7 +279,7 @@ class CsvValidationTests(CsvTestCase):
             inspect_csv(source)
 
         inspection = inspect_csv(source, delimiter=";")
-        self.assertEqual(inspection.format.delimiter, ";")
+        self.assertEqual(inspection.csv_format.delimiter, ";")
 
     def test_row_shape_limit_is_rejected_before_provider_disclosure(self):
         source = self.write_rows("too-wide.csv", [["a", "b"], ["one", "two"]])
@@ -287,7 +287,7 @@ class CsvValidationTests(CsvTestCase):
         provider = RecordingProvider()
 
         with self.assertRaisesRegex(CsvInputError, "max_columns"):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -306,7 +306,7 @@ class CsvValidationTests(CsvTestCase):
         provider = RecordingProvider()
 
         with self.assertRaisesRegex(CsvInputError, "output_encoding"):
-            translate_csv(
+            translate(
                 source,
                 "ko",
                 "en",
@@ -326,7 +326,7 @@ class CsvValidationTests(CsvTestCase):
         )
         output = self.path("sample-budget.out.csv")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",

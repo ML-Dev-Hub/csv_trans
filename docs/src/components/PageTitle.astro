@@ -1,0 +1,61 @@
+---
+// Page title with a "Copy page" control that copies the page's markdown
+// source — useful for pasting a page into an issue, a note, or an LLM.
+import Default from "@astrojs/starlight/components/PageTitle.astro";
+
+const entry = Astro.locals.starlightRoute.entry;
+const isSplash = entry.data.template === "splash";
+const isHome = ["", "index"].includes(Astro.locals.starlightRoute.id ?? entry.id);
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const rawUrl = `${base}/raw/${entry.id}.md`;
+---
+
+{
+  isHome ? null : isSplash ? (
+    <Default />
+  ) : (
+    <div class="page-title-row">
+      <Default />
+      <button class="copy-page" type="button" data-md-url={rawUrl}>
+        <svg
+          aria-hidden="true"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="9" y="9" width="12" height="12" rx="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+        <span>Copy page</span>
+        <span class="copy-page__hint">Markdown</span>
+      </button>
+    </div>
+  )
+}
+
+<script>
+  for (const button of document.querySelectorAll<HTMLButtonElement>(".copy-page")) {
+    const label = button.querySelector("span");
+    button.addEventListener("click", async () => {
+      try {
+        const response = await fetch(button.dataset.mdUrl ?? "");
+        if (!response.ok) throw new Error(String(response.status));
+        await navigator.clipboard.writeText(await response.text());
+        if (label) {
+          label.textContent = "Copied";
+          setTimeout(() => (label.textContent = "Copy page"), 1600);
+        }
+      } catch {
+        if (label) {
+          label.textContent = "Copy failed";
+          setTimeout(() => (label.textContent = "Copy page"), 1600);
+        }
+      }
+    });
+  }
+</script>

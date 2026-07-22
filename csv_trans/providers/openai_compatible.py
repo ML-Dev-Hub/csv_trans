@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-import math
 from typing import Any
 from urllib.parse import urlsplit
 
 from csv_trans.exceptions import (
     ProviderConfigurationError,
-    ProviderError,
     ProviderResponseError,
 )
 
@@ -20,8 +18,11 @@ from ._common import (
     decode_strict_translation_text,
     json_request_body,
     model_translation_prompt,
-    scrub_provider_error,
+    scrubbed_provider_call,
     send_request,
+    validate_extra_headers,
+    validate_temperature,
+    validate_timeout,
     validate_translation_request,
 )
 from .base import HttpClient, TranslationItem, UrllibHttpClient
@@ -56,16 +57,7 @@ class OpenAICompatibleProvider:
                 "OpenAI-compatible provider requires an explicit model",
                 provider=self.provider_id,
             )
-        if (
-            isinstance(timeout, bool)
-            or not isinstance(timeout, (int, float))
-            or not math.isfinite(timeout)
-            or timeout <= 0
-        ):
-            raise ProviderConfigurationError(
-                "timeout must be a finite number greater than zero",
-                provider=self.provider_id,
-            )
+        validate_timeout(timeout, provider=self.provider_id)
         if max_tokens is not None and (
             isinstance(max_tokens, bool)
             or not isinstance(max_tokens, int)
@@ -75,16 +67,7 @@ class OpenAICompatibleProvider:
                 "max_tokens must be a positive integer or None",
                 provider=self.provider_id,
             )
-        if temperature is not None and (
-            isinstance(temperature, bool)
-            or not isinstance(temperature, (int, float))
-            or (isinstance(temperature, float) and not math.isfinite(temperature))
-            or temperature < 0
-        ):
-            raise ProviderConfigurationError(
-                "temperature must be a finite non-negative number or None",
-                provider=self.provider_id,
-            )
+        validate_temperature(temperature, provider=self.provider_id)
         if response_format is not None and not isinstance(response_format, Mapping):
             raise ProviderConfigurationError(
                 "response_format must be a mapping or None",
@@ -102,6 +85,7 @@ class OpenAICompatibleProvider:
             raise ProviderConfigurationError(
                 "api_key must be a string or None", provider=self.provider_id
             )
+        validate_extra_headers(extra_headers, provider=self.provider_id)
 
         self.model = model.strip()
         self.base_url = validate_endpoint(
@@ -133,6 +117,7 @@ class OpenAICompatibleProvider:
             return self.base_url
         return f"{self.base_url}/chat/completions"
 
+    @scrubbed_provider_call
     def translate(
         self,
         items: Sequence[TranslationItem],
@@ -142,21 +127,14 @@ class OpenAICompatibleProvider:
     ) -> list[TranslationItem]:
         """Translate a batch and require an exact JSON ID mapping in response."""
 
-        try:
-            return self._translate_with_instruction(
-                items,
-                source_language=source_language,
-                target_language=target_language,
-                instruction=MODEL_SYSTEM_PROMPT,
-            )
-        except ProviderError as error:
-            safe_error = scrub_provider_error(error)
-        self = None  # type: ignore[assignment]
-        items = ()
-        source_language = None
-        target_language = ""
-        raise safe_error from None
+        return self._translate_with_instruction(
+            items,
+            source_language=source_language,
+            target_language=target_language,
+            instruction=MODEL_SYSTEM_PROMPT,
+        )
 
+    @scrubbed_provider_call
     def translate_corrective(
         self,
         items: Sequence[TranslationItem],
@@ -166,20 +144,12 @@ class OpenAICompatibleProvider:
     ) -> list[TranslationItem]:
         """Retry a malformed result with an explicit corrective instruction."""
 
-        try:
-            return self._translate_with_instruction(
-                items,
-                source_language=source_language,
-                target_language=target_language,
-                instruction=MODEL_CORRECTIVE_PROMPT,
-            )
-        except ProviderError as error:
-            safe_error = scrub_provider_error(error)
-        self = None  # type: ignore[assignment]
-        items = ()
-        source_language = None
-        target_language = ""
-        raise safe_error from None
+        return self._translate_with_instruction(
+            items,
+            source_language=source_language,
+            target_language=target_language,
+            instruction=MODEL_CORRECTIVE_PROMPT,
+        )
 
     def _translate_with_instruction(
         self,
@@ -226,7 +196,7 @@ class OpenAICompatibleProvider:
         headers = {
             name: value
             for name, value in self.extra_headers.items()
-            if name.casefold() not in protected_headers
+            if name.strip().casefold() not in protected_headers
         }
         headers.update({
             "Accept": "application/json",

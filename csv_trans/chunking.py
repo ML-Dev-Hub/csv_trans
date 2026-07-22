@@ -22,7 +22,10 @@ _PROTECTED = re.compile(
     r"https?://[^\s<>]+|www\.[^\s<>]+|"
     r"(?<![\w.+-])[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|"
     r"\{\{[^{}]+\}\}|\$\{[^{}]+\}|\{[^{}]+\}|"
-    r"%\([^)]+\)[#0 +\-]?[0-9]*(?:\.[0-9]+)?[diouxXeEfFgGcrs%]|"
+    # Bound the mapping-key length: an unbounded ``[^)]+`` re-scans O(n^2) on
+    # adversarial ``%(%(...`` runs, while a fixed {1,64} cap keeps it linear and
+    # still protects normal keys, including the legal whitespace-bearing ones.
+    r"%\([^)]{1,64}\)[#0 +\-]?[0-9]*(?:\.[0-9]+)?[diouxXeEfFgGcrs%]|"
     r"%[#0 +\-]?[0-9]*(?:\.[0-9]+)?[diouxXeEfFgGcrs%]|"
     r"<[^<>]+>"
     r")",
@@ -81,12 +84,17 @@ def segment_text(
         raise ValueError("max_chars must be at least 1")
 
     coarse: list[TextSegment] = []
-    folded_text = text.casefold()
+    # Cheap gate before the placeholder regex. It must never be False when a
+    # real protected token exists; True with no actual match is harmless (the
+    # regex finds nothing and the text stays one translatable segment).
     has_protected_marker = (
-        "http://" in folded_text
-        or "https://" in folded_text
-        or "www." in folded_text
-        or any(marker in text for marker in ("@", "{", "%", "<", "$"))
+        "{" in text
+        or "%" in text
+        or "<" in text
+        or "@" in text
+        or "$" in text
+        or "://" in text
+        or "www." in text.casefold()
     )
     if preserve_placeholders and has_protected_marker:
         cursor = 0
@@ -100,34 +108,39 @@ def segment_text(
     else:
         coarse.append(TextSegment(text, True))
 
-    if not coarse:
-        return [TextSegment(text, False)]
-
     result: list[TextSegment] = []
+    append = result.append
     for segment in coarse:
         if not segment.translatable:
-            result.append(segment)
+            append(segment)
             continue
-        for raw_chunk in split_text_lossless(segment.text, max_chars):
+        segment_text_value = segment.text
+        # A fitting segment needs no split; split_text_lossless would return
+        # [text] unchanged.
+        if len(segment_text_value) <= max_chars:
+            chunks: tuple[str, ...] | list[str] = (segment_text_value,)
+        else:
+            chunks = split_text_lossless(segment_text_value, max_chars)
+        for raw_chunk in chunks:
             # An all-whitespace chunk is simultaneously all leading and all
             # trailing whitespace. Treat it once as one protected segment;
             # slicing it through both paths below would duplicate it during
             # reconstruction (notably immediately before a protected token).
             if raw_chunk.isspace():
-                result.append(TextSegment(raw_chunk, False))
+                append(TextSegment(raw_chunk, False))
                 continue
-            leading_size = len(raw_chunk) - len(raw_chunk.lstrip())
-            trailing_size = len(raw_chunk) - len(raw_chunk.rstrip())
-            content_end = len(raw_chunk) - trailing_size if trailing_size else len(raw_chunk)
+            chunk_len = len(raw_chunk)
+            leading_size = chunk_len - len(raw_chunk.lstrip())
+            content_end = len(raw_chunk.rstrip())
             leading = raw_chunk[:leading_size]
             content = raw_chunk[leading_size:content_end]
             trailing = raw_chunk[content_end:]
             if leading:
-                result.append(TextSegment(leading, False))
+                append(TextSegment(leading, False))
             if content:
-                result.append(TextSegment(content, True))
+                append(TextSegment(content, True))
             if trailing:
-                result.append(TextSegment(trailing, False))
+                append(TextSegment(trailing, False))
     return result or [TextSegment(text, False)]
 
 
@@ -137,8 +150,10 @@ def reconstruct_segments(
     """Reassemble segments using translations keyed by segment index."""
 
     return "".join(
-        translations[index] if segment.translatable else segment.text
-        for index, segment in enumerate(segments)
+        [
+            translations[index] if segment.translatable else segment.text
+            for index, segment in enumerate(segments)
+        ]
     )
 
 

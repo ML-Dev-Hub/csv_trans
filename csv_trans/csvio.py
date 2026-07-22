@@ -46,7 +46,8 @@ class CsvFormat:
     quoting: int = csv.QUOTE_MINIMAL
     lineterminator: str = "\n"
 
-    def reader_options(self) -> dict[str, object]:
+    def _base(self) -> dict[str, Any]:
+        # Single source of truth for the dialect fields shared by reader/writer.
         return {
             "delimiter": self.delimiter,
             "quotechar": self.quotechar,
@@ -54,37 +55,24 @@ class CsvFormat:
             "doublequote": self.doublequote,
             "skipinitialspace": self.skipinitialspace,
             "quoting": self.quoting,
-            "strict": True,
         }
 
-    def writer_options(self) -> dict[str, object]:
-        return {
-            "delimiter": self.delimiter,
-            "quotechar": self.quotechar,
-            "escapechar": self.escapechar,
-            "doublequote": self.doublequote,
-            "skipinitialspace": self.skipinitialspace,
-            "quoting": self.quoting,
-            "lineterminator": self.lineterminator,
-        }
+    def reader_options(self) -> dict[str, Any]:
+        return {**self._base(), "strict": True}
 
-    def to_dict(self) -> dict[str, object]:
-        return {
-            "delimiter": self.delimiter,
-            "quotechar": self.quotechar,
-            "escapechar": self.escapechar,
-            "doublequote": self.doublequote,
-            "skipinitialspace": self.skipinitialspace,
-            "quoting": self.quoting,
-            "lineterminator": self.lineterminator,
-        }
+    def writer_options(self) -> dict[str, Any]:
+        return {**self._base(), "lineterminator": self.lineterminator}
+
+    def to_dict(self) -> dict[str, Any]:
+        # The serialized dialect must match the writer kwargs exactly.
+        return self.writer_options()
 
 
 @dataclass(slots=True, frozen=True)
 class CsvInspection:
     path: Path
     encoding: str
-    format: CsvFormat
+    csv_format: CsvFormat
 
 
 def detect_encoding(path: str | Path, requested: str | None = None) -> str:
@@ -108,11 +96,11 @@ def detect_encoding(path: str | Path, requested: str | None = None) -> str:
     except OSError as exc:
         raise CsvInputError(f"cannot read {source}: {exc}") from exc
 
-    if prefix.startswith(codecs.BOM_UTF32_LE) or prefix.startswith(codecs.BOM_UTF32_BE):
+    if prefix.startswith((codecs.BOM_UTF32_LE, codecs.BOM_UTF32_BE)):
         return "utf-32"
     if prefix.startswith(codecs.BOM_UTF8):
         return "utf-8-sig"
-    if prefix.startswith(codecs.BOM_UTF16_LE) or prefix.startswith(codecs.BOM_UTF16_BE):
+    if prefix.startswith((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)):
         return "utf-16"
 
     decoder = codecs.getincrementaldecoder("utf-8")("strict")
@@ -120,6 +108,18 @@ def detect_encoding(path: str | Path, requested: str | None = None) -> str:
     try:
         with source.open("rb") as stream:
             while chunk := stream.read(64 * 1024):
+                # A NUL byte decodes as valid UTF-8 (U+0000) but virtually never
+                # appears in a real UTF-8 CSV; it is the signature of a BOM-less
+                # UTF-16/UTF-32 file, which would otherwise be mis-decoded as
+                # UTF-8 into NUL-riddled, misaligned rows. Fail closed and ask for
+                # an explicit encoding rather than silently corrupt the data.
+                nul_index = chunk.find(b"\x00")
+                if nul_index != -1:
+                    raise CsvInputError(
+                        "input contains NUL bytes and cannot be decoded as text; "
+                        "if this is a BOM-less UTF-16/UTF-32 file, pass an explicit "
+                        f"encoding (first NUL near byte {offset + nul_index})"
+                    )
                 decoder.decode(chunk)
                 offset += len(chunk)
             decoder.decode(b"", final=True)
@@ -130,6 +130,35 @@ def detect_encoding(path: str | Path, requested: str | None = None) -> str:
             f"pass an explicit encoding (decode failed near byte {position})"
         ) from exc
     return "utf-8"
+
+
+def _first_record_terminator(sample: str) -> str | None:
+    """Return the first unquoted line terminator, tracking standard "" quoting.
+
+    The dialect quotechar is not known yet at this point, so this assumes the
+    RFC-4180 default double-quote. That is correct for the common case and no
+    worse than substring detection for an exotic quotechar.
+    """
+
+    in_quotes = False
+    index = 0
+    length = len(sample)
+    while index < length:
+        character = sample[index]
+        if character == '"':
+            if in_quotes and index + 1 < length and sample[index + 1] == '"':
+                index += 2  # An escaped "" pair stays inside the quoted field.
+                continue
+            in_quotes = not in_quotes
+        elif not in_quotes:
+            if character == "\r":
+                if index + 1 < length and sample[index + 1] == "\n":
+                    return "\r\n"
+                return "\r"
+            if character == "\n":
+                return "\n"
+        index += 1
+    return None
 
 
 def inspect_csv(
@@ -167,7 +196,11 @@ def inspect_csv(
             "CSV dialect sample ended before the first record; pass an explicit delimiter"
         )
 
-    line_ending = (
+    # Infer the record terminator from the first *unquoted* line break so a
+    # CRLF sitting inside a quoted multi-line field cannot silently rewrite a
+    # LF-terminated file's line discipline. Fall back to substring presence only
+    # when no unquoted break is found (single-record or unterminated sample).
+    line_ending = _first_record_terminator(sample) or (
         "\r\n"
         if "\r\n" in sample
         else "\n"
@@ -201,7 +234,7 @@ def inspect_csv(
             if len(present_candidates) > 1:
                 raise CsvInputError(
                     "CSV delimiter could not be detected unambiguously; pass an explicit delimiter"
-                )
+                ) from None
             inferred_delimiter = (
                 present_candidates[0] if present_candidates else ","
             )
@@ -219,8 +252,8 @@ def open_rows(
     inspection: CsvInspection,
     *,
     max_field_chars: int = 64 * 1024 * 1024,
-) -> Iterator[Any]:
-    """Yield a strict streaming reader for a prior inspection."""
+) -> Iterator["_SafeReader"]:
+    """Yield a strict streaming reader (rows are list[str]) for a prior inspection."""
 
     stream: TextIO | None = None
     try:
@@ -231,7 +264,7 @@ def open_rows(
         raise CsvInputError(f"failed while opening CSV: {exc}") from exc
     try:
         yield _SafeReader(
-            csv.reader(stream, **inspection.format.reader_options()),
+            csv.reader(stream, **inspection.csv_format.reader_options()),
             max_field_chars=max_field_chars,
         )
     finally:
@@ -296,6 +329,38 @@ def validate_output_path(
     return destination
 
 
+def fsync_parent_directory(destination: str | Path) -> str | None:
+    """Best-effort flush of a just-published directory entry (POSIX only).
+
+    The staging file's contents are already fsync'd, but the atomic
+    rename/hard-link that makes them visible can be lost on a crash until the
+    parent directory is synced. This runs only after a successful, already
+    visible publish, so a failure here degrades durability without ever
+    corrupting or un-publishing the committed file. Returns a warning message on
+    failure (for the caller to record), or ``None`` on success / on Windows,
+    where the rename is itself the durable publish primitive.
+    """
+
+    if os.name == "nt":
+        return None
+    parent = Path(destination).parent
+    try:
+        directory_fd = os.open(parent, os.O_RDONLY)
+    except OSError:
+        return "the output directory could not be opened to flush its entry"
+    warning: str | None = None
+    try:
+        os.fsync(directory_fd)
+    except OSError:
+        warning = "the output directory entry could not be flushed to disk"
+    finally:
+        try:
+            os.close(directory_fd)
+        except OSError:
+            warning = warning or "the output directory descriptor could not be closed"
+    return warning
+
+
 class AtomicCsvWriter:
     """Write beside the destination and publish only after complete success."""
 
@@ -318,7 +383,7 @@ class AtomicCsvWriter:
         self._published = False
         self.cleanup_warnings: list[str] = []
 
-    def __enter__(self) -> csv.writer:
+    def __enter__(self) -> Any:
         self.destination.parent.mkdir(parents=True, exist_ok=True)
         if self.destination.is_symlink():
             raise OutputExistsError(
@@ -395,6 +460,7 @@ class AtomicCsvWriter:
         if self.overwrite:
             os.replace(self._temporary, self.destination)
             self._published = True
+            self._flush_directory()
             return
         if os.name == "nt":
             # Windows rename is atomic and refuses to replace an existing
@@ -414,6 +480,12 @@ class AtomicCsvWriter:
         except FileExistsError as exc:
             raise OutputExistsError(f"output already exists: {self.destination}") from exc
         self._published = True
+        self._flush_directory()
+
+    def _flush_directory(self) -> None:
+        warning = fsync_parent_directory(self.destination)
+        if warning is not None:
+            self.cleanup_warnings.append(warning)
 
 
 __all__ = [

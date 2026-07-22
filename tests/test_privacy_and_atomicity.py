@@ -8,7 +8,8 @@ from pathlib import Path
 import unittest
 from unittest.mock import patch
 
-from csv_trans.core import PrivacyViolation, translate_csv
+from csv_trans import translate, translate_csv
+from csv_trans.core import PrivacyViolation
 from csv_trans.csvio import CsvInputError, open_rows as real_open_rows
 from csv_trans.exceptions import ProviderConfigurationError, ProviderTimeoutError
 from csv_trans.models import PrivacyMode, TranslationConfig, TranslationResult
@@ -31,7 +32,7 @@ class LocalOnlyPrivacyTests(CsvTestCase):
         result = None
         try:
             with no_network():
-                result = translate_csv(
+                result = translate(
                     source,
                     "en",
                     "fr",
@@ -90,7 +91,7 @@ class LocalOnlyPrivacyTests(CsvTestCase):
         source = self.write_rows("echo.csv", [["text"], ["hello"]])
         output = self.path("echo.out.csv")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -128,19 +129,13 @@ class LocalOnlyPrivacyTests(CsvTestCase):
             max_retries=0,
             backoff_base=0,
             jitter=0,
+            columns=[0],
+            provider=local,
+            fallback_providers=(remote,),
         )
 
         with no_network(), self.assertRaises((PrivacyViolation, ProviderConfigurationError)):
-            translate_csv(
-                source,
-                "en",
-                "fr",
-                output_path=output,
-                columns=[0],
-                provider=local,
-                fallback_providers=(remote,),
-                config=config,
-            )
+            translate_csv(source, config, output_path=output)
 
         self.assertEqual(local.calls, [])
         self.assertEqual(remote.calls, [])
@@ -156,7 +151,7 @@ class LocalOnlyPrivacyTests(CsvTestCase):
         )
 
         with self.assertRaises(PrivacyViolation):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -180,7 +175,7 @@ class LocalOnlyPrivacyTests(CsvTestCase):
         )
 
         with no_network():
-            result = translate_csv(
+            result = translate(
                 source,
                 "en",
                 "fr",
@@ -204,7 +199,7 @@ class LocalOnlyPrivacyTests(CsvTestCase):
         )
 
         with no_network():
-            result = translate_csv(
+            result = translate(
                 source,
                 "en",
                 "fr",
@@ -226,7 +221,7 @@ class LocalOnlyPrivacyTests(CsvTestCase):
         provider.base_url = "http://127.0.0.1:8765/translate"
 
         with self.assertRaises(PrivacyViolation):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -255,7 +250,7 @@ class LocalOnlyPrivacyTests(CsvTestCase):
             provider.endpoint = "https://remote.example/v1"
 
         with self.assertRaises(PrivacyViolation):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -286,7 +281,7 @@ class LocalOnlyPrivacyTests(CsvTestCase):
         )
 
         with self.assertRaises(PrivacyViolation):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -324,7 +319,7 @@ class LocalOnlyPrivacyTests(CsvTestCase):
         )
 
         with self.assertRaises(PrivacyViolation):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -352,7 +347,7 @@ class LocalOnlyPrivacyTests(CsvTestCase):
         )
         provider = GoogleFreeProvider(http_client=FakeHttpClient(response))
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -468,7 +463,7 @@ class AtomicOutputTests(CsvTestCase):
 
         for report in (source, output):
             with self.subTest(report=report), self.assertRaises(ValueError):
-                translate_csv(
+                translate(
                     source,
                     "en",
                     "fr",
@@ -490,7 +485,7 @@ class AtomicOutputTests(CsvTestCase):
         provider = RecordingProvider(prefix="fr:")
 
         with self.assertRaises(FileExistsError):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -509,7 +504,7 @@ class AtomicOutputTests(CsvTestCase):
         output = self.path("report-overwrite-output.csv")
         report = self.write_text("report-overwrite.json", "OLD REPORT\n")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -531,7 +526,7 @@ class AtomicOutputTests(CsvTestCase):
         output = self.path("result.csv")
         provider = AlwaysFailProvider(name="local-failure")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -577,7 +572,7 @@ class AtomicOutputTests(CsvTestCase):
             )
 
         with patch.object(TranslationResult, "write_json", new=publish_with_race):
-            result = translate_csv(
+            result = translate(
                 source,
                 "en",
                 "fr",
@@ -603,7 +598,7 @@ class AtomicOutputTests(CsvTestCase):
         provider = RecordingProvider(prefix="fr:")
 
         with self.assertRaises(FileExistsError):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -619,7 +614,7 @@ class AtomicOutputTests(CsvTestCase):
     def test_in_place_overwrite_replaces_the_complete_file_atomically(self):
         source = self.write_rows("in-place.csv", [["text"], ["hello"], ["world"]])
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -645,7 +640,7 @@ class AtomicOutputTests(CsvTestCase):
             patch.object(os, "replace", side_effect=OSError("simulated replace failure")),
             self.assertRaises(OSError),
         ):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -690,7 +685,7 @@ class SourceConsistencyTests(CsvTestCase):
             ),
             self.assertRaises(CsvInputError),
         ):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -716,7 +711,7 @@ class SourceConsistencyTests(CsvTestCase):
             ),
             self.assertRaises(CsvInputError),
         ):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",

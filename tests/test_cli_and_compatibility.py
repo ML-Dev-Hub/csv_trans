@@ -107,8 +107,9 @@ class CliAliasTests(CsvTestCase):
         )
 
         self.assertEqual(code, 0)
-        self.assertEqual(call.call_args.args[1:3], ("en", "fr"))
-        self.assertEqual(call.call_args.kwargs["delimiter"], ";")
+        config = call.call_args.args[1]
+        self.assertEqual((config.source_language, config.target_language), ("en", "fr"))
+        self.assertEqual(config.delimiter, ";")
 
     def test_hyphenated_long_options_are_supported(self):
         source = self.write_rows("hyphen.csv", [["text"], ["hello"]])
@@ -129,7 +130,7 @@ class CliAliasTests(CsvTestCase):
 
         self.assertEqual(code, 0)
         self.assertEqual(Path(call.call_args.args[0]), source)
-        self.assertEqual(call.call_args.kwargs["delimiter"], ",")
+        self.assertEqual(call.call_args.args[1].delimiter, ",")
 
     def test_readme_file_alias_and_v2_delimiter_alias_are_supported(self):
         source = self.write_rows("documented.csv", [["text"], ["hello"]], delimiter="|")
@@ -150,7 +151,7 @@ class CliAliasTests(CsvTestCase):
 
         self.assertEqual(code, 0)
         self.assertEqual(Path(call.call_args.args[0]), source)
-        self.assertEqual(call.call_args.kwargs["delimiter"], "|")
+        self.assertEqual(call.call_args.args[1].delimiter, "|")
 
     def test_underscore_long_options_remain_supported_for_existing_scripts(self):
         source = self.write_rows("underscore.csv", [["text"], ["hello"]])
@@ -203,14 +204,14 @@ class CliAliasTests(CsvTestCase):
         )
 
         self.assertEqual(code, 0)
-        options = call.call_args.kwargs
-        self.assertEqual(Path(options["output_path"]), output)
-        self.assertEqual(options["columns"], ["text"])
-        self.assertTrue(options["translate_headers"])
-        self.assertIn(getattr(options["privacy"], "value", options["privacy"]), ("local-only", "local_only"))
-        self.assertEqual(Path(options["report_path"]), report)
-        self.assertEqual(Path(options["snapshot_directory"]), snapshot_directory)
-        self.assertTrue(options["overwrite"])
+        config = call.call_args.args[1]
+        self.assertEqual(Path(call.call_args.kwargs["output_path"]), output)
+        self.assertEqual(config.columns, ("text",))
+        self.assertTrue(config.translate_headers)
+        self.assertIn(getattr(config.privacy, "value", config.privacy), ("local-only", "local_only"))
+        self.assertEqual(Path(config.report_path), report)
+        self.assertEqual(Path(config.snapshot_directory), snapshot_directory)
+        self.assertTrue(config.overwrite)
 
 
 class CliV2SafetyTests(CsvTestCase):
@@ -491,18 +492,6 @@ class CompatibilityWrapperTests(CsvTestCase):
     def test_v2_core_is_exported_from_the_package_root(self):
         self.assertIs(public_translate_csv, core_translate_csv)
 
-    def test_historical_four_positional_arguments_delegate_to_v2_core(self):
-        source = self.path("legacy.csv")
-        expected = CliResult("success")
-
-        with patch.object(translate_module, "translate_csv", return_value=expected) as call:
-            actual = translate_module.translate(source, "en", "fr", ";")
-
-        self.assertIs(actual, expected)
-        call.assert_called_once()
-        self.assertEqual(call.call_args.args[:3], (source, "en", "fr"))
-        self.assertEqual(call.call_args.kwargs["delimiter"], ";")
-
     def test_wrapper_forwards_v2_options_and_returns_a_structured_result(self):
         source = self.write_rows("wrapper.csv", [["text"], ["hello"]], delimiter=";")
         output = self.path("wrapper.out.csv")
@@ -512,24 +501,93 @@ class CompatibilityWrapperTests(CsvTestCase):
             source,
             "en",
             "fr",
-            ";",
             output_path=output,
             columns=[0],
             provider=provider,
+            delimiter=";",
         )
 
         self.assertEqual(self.read_rows(output, delimiter=";"), [["text"], ["fr:hello"]])
         self.assertEqual(status_value(result), "success")
         self.assertEqual(result.output_path.resolve(), output.resolve())
 
-    def test_keyword_separator_alias_is_forwarded_as_delimiter(self):
+    def test_wrapper_builds_a_config_and_delegates_to_translate_csv(self):
         source = self.path("keyword.csv")
         expected = CliResult("success")
 
         with patch.object(translate_module, "translate_csv", return_value=expected) as call:
-            translate_module.translate(source, "en", "fr", sep="|")
+            translate_module.translate(source, "en", "fr", delimiter="|")
 
-        self.assertEqual(call.call_args.kwargs["delimiter"], "|")
+        config = call.call_args.args[1]
+        self.assertEqual(config.source_language, "en")
+        self.assertEqual(config.target_language, "fr")
+        self.assertEqual(config.delimiter, "|")
+
+    # --- csv-trans 1.x calling interface -----------------------------------
+
+    def test_v1_positional_separator_is_forwarded_as_delimiter(self):
+        # 1.x: translate(file, source_lang, target_lang, sep)
+        source = self.write_rows("v1pos.csv", [["text"], ["hello"]], delimiter=";")
+        output = self.path("v1pos.out.csv")
+
+        result = public_translate(
+            source,
+            "en",
+            "fr",
+            ";",
+            output_path=output,
+            columns=[0],
+            provider=RecordingProvider(prefix="fr:"),
+        )
+
+        self.assertEqual(self.read_rows(output, delimiter=";"), [["text"], ["fr:hello"]])
+        self.assertEqual(status_value(result), "success")
+
+    def test_v1_keyword_argument_names_are_accepted(self):
+        # 1.x kwargs: file=, source_lang=, target_lang=, sep=
+        source = self.write_rows("v1kw.csv", [["text"], ["hello"]], delimiter=";")
+        output = self.path("v1kw.out.csv")
+
+        result = public_translate(
+            file=source,
+            source_lang="en",
+            target_lang="fr",
+            sep=";",
+            output_path=output,
+            columns=[0],
+            provider=RecordingProvider(prefix="fr:"),
+        )
+
+        self.assertEqual(self.read_rows(output, delimiter=";"), [["text"], ["fr:hello"]])
+        self.assertEqual(status_value(result), "success")
+
+    def test_v1_main_alias_is_exported_and_delegates(self):
+        # 1.x: from csv_trans.translate import main; main(file_path, sl, tl, file_separator)
+        self.assertIn("main", translate_module.__all__)
+        source = self.write_rows("v1main.csv", [["text"], ["hello"]], delimiter=";")
+        output = self.path("v1main.out.csv")
+
+        result = translate_module.main(
+            source,
+            "en",
+            "fr",
+            ";",
+            output_path=output,
+            columns=[0],
+            provider=RecordingProvider(prefix="fr:"),
+        )
+
+        self.assertEqual(self.read_rows(output, delimiter=";"), [["text"], ["fr:hello"]])
+        self.assertEqual(status_value(result), "success")
+
+    def test_explicit_v2_delimiter_wins_over_the_v1_sep_positional(self):
+        source = self.path("precedence.csv")
+        expected = CliResult("success")
+
+        with patch.object(translate_module, "translate_csv", return_value=expected) as call:
+            translate_module.translate(source, "en", "fr", ",", delimiter="|")
+
+        self.assertEqual(call.call_args.args[1].delimiter, "|")
 
 
 class ConfigurationPrecedenceTests(CsvTestCase):
@@ -551,31 +609,9 @@ class ConfigurationPrecedenceTests(CsvTestCase):
         self.assertEqual(self.read_rows(output), [["text"], ["fr:hello"]])
         self.assertEqual(status_value(result), "success")
 
-    def test_explicit_call_options_override_config_values(self):
-        source = self.write_rows(
-            "override.csv",
-            [["text", "note"], ["hello", "keep"]],
-            delimiter=";",
-        )
-        output = self.path("override.out.csv")
-        config = TranslationConfig(
-            "en", "fr", delimiter=",", max_retries=3, backoff_base=0, jitter=0
-        )
-
-        result = translate_module.translate_csv(
-            source,
-            "en",
-            "fr",
-            output_path=output,
-            columns=[0],
-            provider=RecordingProvider(prefix="fr:"),
-            config=config,
-            delimiter=";",
-            max_retries=0,
-        )
-
-        self.assertEqual(self.read_rows(output, delimiter=";"), [["text", "note"], ["fr:hello", "keep"]])
-        self.assertEqual(result.dialect["delimiter"], ";")
+    def test_translate_csv_rejects_a_non_config_second_argument(self):
+        with self.assertRaises(TypeError):
+            translate_module.translate_csv("x.csv", "en")  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":

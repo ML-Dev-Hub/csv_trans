@@ -4,13 +4,30 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 import re
-from typing import Iterable, Sequence
+from typing import Sequence
 
 from .models import ColumnSelection
 
 
 _IDENTIFIER_HEADER = re.compile(
     r"^(?:id|uuid|guid|key|pk|sku|code|index|idx|row|number|num|no|zip|postal(?:_?code)?)$",
+    re.IGNORECASE,
+)
+# Credential/secret words appearing as a component of a (possibly composite)
+# header name. A column named ``client_secret``/``session_token``/``api_key``
+# must never be auto-selected and disclosed to a provider. Skipping is the safe
+# direction, so this is intentionally aggressive on credential vocabulary.
+_SECRET_HEADER = re.compile(
+    r"(?:^|_)(?:password|passwd|pwd|secret|token|apikey|api_?key|auth|"
+    r"access_?token|refresh_?token|credential|credentials|private_?key|"
+    r"client_?secret|signing_?key)(?:$|_)",
+    re.IGNORECASE,
+)
+# Unambiguous identifier affixes in composite names (user_id, order_uuid, ...).
+# Kept narrow so ordinary text columns are not over-skipped; value-based
+# heuristics still catch identifier columns that use other naming.
+_IDENTIFIER_AFFIX = re.compile(
+    r"(?:^|_)(?:id|uuid|guid|sku)(?:$|_)",
     re.IGNORECASE,
 )
 _URL_OR_EMAIL = re.compile(
@@ -26,6 +43,26 @@ _DATE_OR_TIME = re.compile(
     r"(?:[ T]\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$"
 )
 _CODE = re.compile(r"^(?=.*\d)(?=.*[A-Za-z])[A-Za-z0-9_.:/-]+$")
+_THOUSANDS = re.compile(r"[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?")
+
+
+def _is_non_finite_token(candidate: str) -> bool:
+    """Whether *candidate* is a Decimal NaN/sNaN/Infinity missing-value marker.
+
+    NaN / inf / Infinity (any sign, case, payload, or underscore grouping) are
+    missing-value tokens in numpy/pandas exports, not natural-language words. A
+    fixed ``nan|inf|infinity`` regex silently misses signaling NaNs (``sNaN``,
+    ``-sNaN``), NaN payloads that carry no digit (``sNaN`` vs ``NaN123``), and
+    underscore-broken spellings that Decimal still accepts (``s_nan``). Decimal's
+    own parser is the authoritative grammar for these, so we defer to it and test
+    finiteness directly rather than guessing at the surface form.
+    """
+
+    try:
+        number = Decimal(candidate)
+    except InvalidOperation:
+        return False
+    return number.is_nan() or number.is_infinite()
 
 
 def is_numeric(value: str) -> bool:
@@ -34,16 +71,21 @@ def is_numeric(value: str) -> bool:
     candidate = value.strip()
     if not candidate:
         return False
+    # Decimal also parses the words NaN/Infinity and underscore-grouped literals;
+    # neither is a conventional CSV number, and treating "NaN"/"Infinity" as
+    # numeric would wrongly skip genuine text cells that happen to read that way.
+    if "_" in candidate:
+        return False
     # Accept thousands separators only in unambiguous three-digit groups.
-    if re.fullmatch(r"[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?", candidate):
+    if _THOUSANDS.fullmatch(candidate):
         candidate = candidate.replace(",", "")
     if candidate.endswith("%"):
         candidate = candidate[:-1]
     try:
-        Decimal(candidate)
+        number = Decimal(candidate)
     except InvalidOperation:
         return False
-    return True
+    return number.is_finite()
 
 
 def is_machine_value(value: str) -> bool:
@@ -59,6 +101,23 @@ def is_machine_value(value: str) -> bool:
     if _UUID.fullmatch(candidate) or _DATE_OR_TIME.fullmatch(candidate):
         return True
     if _CODE.fullmatch(candidate):
+        return True
+    # A single, whitespace-free base64/token-shaped blob (e.g. an AWS secret key
+    # or standard base64) contains ``+``/``=`` and is long; natural-language text
+    # never is. Requiring one of those symbols avoids dropping ordinary words or
+    # slash-joined phrases, so this only preserves opaque secrets from disclosure.
+    if (
+        len(candidate) >= 20
+        and ("+" in candidate or "=" in candidate)
+        and re.fullmatch(r"[A-Za-z0-9+/=_-]+", candidate)
+    ):
+        return True
+    # Non-finite numeric tokens (NaN/sNaN/inf/Infinity, any sign/case/payload)
+    # are missing-value markers from numpy/pandas exports, not prose.
+    # ``is_numeric`` rejects them (finiteness check) so they don't count as
+    # numbers, but they must still be preserved rather than shipped to the
+    # provider and rewritten.
+    if _is_non_finite_token(candidate):
         return True
     return not any(character.isalpha() for character in candidate)
 
@@ -98,17 +157,16 @@ def resolve_columns(
             for row in sample_rows
             if index < len(row) and row[index].strip()
         ]
-        decision = _classify_column(name, values)
+        is_selected, reason = _classify_column(name, values)
         report.append(
             ColumnSelection(
                 index=index,
                 name=name,
-                selected=decision[0],
-                reason=decision[1],
-                confidence=decision[2],
+                selected=is_selected,
+                reason=reason,
             )
         )
-        if decision[0]:
+        if is_selected:
             selected.append(index)
     return selected, report
 
@@ -144,46 +202,39 @@ def _resolve_explicit(
     return resolved
 
 
-def _classify_column(name: str, values: Sequence[str]) -> tuple[bool, str, float]:
+def _classify_column(name: str, values: Sequence[str]) -> tuple[bool, str]:
     normalized_name = re.sub(r"[\s-]+", "_", name.strip())
-    if _IDENTIFIER_HEADER.fullmatch(normalized_name):
-        return False, "identifier-like header", 0.99
+    if _SECRET_HEADER.search(normalized_name):
+        return False, "credential-like header"
+    if _IDENTIFIER_HEADER.fullmatch(normalized_name) or _IDENTIFIER_AFFIX.search(
+        normalized_name
+    ):
+        return False, "identifier-like header"
     if not values:
-        return False, "empty in selection sample", 1.0
+        return False, "empty in selection sample"
 
-    numeric_count = sum(is_numeric(value) for value in values)
-    machine_count = sum(is_machine_value(value) for value in values)
-    numeric_ratio = numeric_count / len(values)
-    machine_ratio = machine_count / len(values)
-    if numeric_ratio >= 0.8:
-        return False, "numeric-like values", numeric_ratio
-    if machine_ratio >= 0.8:
-        return False, "identifier or machine-like values", machine_ratio
+    # is_machine_value subsumes is_numeric, so one pass yields both counts.
+    numeric_count = 0
+    machine_count = 0
+    for value in values:
+        if is_numeric(value):
+            numeric_count += 1
+            machine_count += 1
+        elif is_machine_value(value):
+            machine_count += 1
+    if numeric_count / len(values) >= 0.8:
+        return False, "numeric-like values"
+    if machine_count / len(values) >= 0.8:
+        return False, "identifier or machine-like values"
 
-    alpha_values = [value for value in values if any(char.isalpha() for char in value)]
-    if alpha_values:
-        # Natural-language evidence includes alphabetic words even if the
-        # values are short (city names and labels should not be mistaken for
-        # identifiers merely because they are unique).
-        confidence = max(0.55, min(0.99, 1.0 - machine_ratio))
-        return True, "text-like values", confidence
-    return False, "no text-like values", 0.9
-
-
-def display_selected_columns(
-    selection: Iterable[ColumnSelection],
-) -> list[dict[str, object]]:
-    """Return a compact serializable selection view for user interfaces."""
-
-    return [
-        {"index": item.index, "name": item.name, "reason": item.reason}
-        for item in selection
-        if item.selected
-    ]
+    # Natural-language evidence is any alphabetic word, even a short one (city
+    # names and labels must not be mistaken for identifiers merely for brevity).
+    if any(any(char.isalpha() for char in value) for value in values):
+        return True, "text-like values"
+    return False, "no text-like values"
 
 
 __all__ = [
-    "display_selected_columns",
     "is_machine_value",
     "is_numeric",
     "resolve_columns",

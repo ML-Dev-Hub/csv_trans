@@ -55,17 +55,18 @@ empty, and identifier-like columns are skipped. Pass `columns=("title",
 "description")` or column indexes to override selection, and set
 `translate_headers=True` only when translated headers are desired.
 
-The historical four-argument form remains available:
+A string-language convenience wrapper builds the configuration for you and
+accepts any configuration field as a keyword argument:
 
 ```python
 from csv_trans import translate
 
-result = translate("catalog.csv", "en", "fr", sep=",")
+result = translate("catalog.csv", "en", "fr", columns=("title",))
 ```
 
-Code that ignored the former `None` return continues to work. Version 2 now
-returns a `TranslationResult` so callers can detect partial completion and find
-the output file.
+`translate` returns the same `TranslationResult` as `translate_csv`, so callers
+can detect partial completion and find the output file. The delimiter is
+auto-detected; pass `delimiter=";"` to set it explicitly.
 
 The equivalent default CLI command is:
 
@@ -334,14 +335,14 @@ cannot silently treat mixed-language output as complete.
 
 ## Project documentation
 
-- [Migration from 1.x](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/MIGRATION_V2.md)
+- [Migration from 1.x](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/internal/MIGRATION_V2.md)
 - [Local and CI test bed](https://github.com/ML-Dev-Hub/csv_trans/blob/main/TESTING.md)
 - [Security and private reporting](https://github.com/ML-Dev-Hub/csv_trans/blob/main/SECURITY.md)
-- [Historical pre-v2 repository audit](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/REPOSITORY_AUDIT.md)
-- [Accepted product direction](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/PRODUCT_DIRECTION.md)
-- [Version 2 architecture](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/ARCHITECTURE_V2.md)
+- [Historical pre-v2 repository audit](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/internal/REPOSITORY_AUDIT.md)
+- [Accepted product direction](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/internal/PRODUCT_DIRECTION.md)
+- [Version 2 architecture](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/internal/ARCHITECTURE_V2.md)
 - [Changelog](https://github.com/ML-Dev-Hub/csv_trans/blob/main/CHANGELOG.md)
-- [Release process](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/RELEASING.md)
+- [Release process](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/internal/RELEASING.md)
 - [Contributing](https://github.com/ML-Dev-Hub/csv_trans/blob/main/CONTRIBUTING.md)
 
 ## Acknowledgements

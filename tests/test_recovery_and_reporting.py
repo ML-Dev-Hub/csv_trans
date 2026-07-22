@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import unittest
 
-from csv_trans.core import translate_csv
+from csv_trans import translate, translate_csv
 from csv_trans.exceptions import ProviderContextLimitError
 from csv_trans.models import TranslationConfig
 from csv_trans.providers import TranslationItem
@@ -33,19 +33,12 @@ class RetryAndFallbackTests(CsvTestCase):
         output = self.path("retry.out.csv")
         provider = FailOnceProvider()
         config = TranslationConfig(
-            "en", "fr", max_retries=2, backoff_base=0, jitter=0, batch_size=8
+            "en", "fr", max_retries=2, backoff_base=0, jitter=0, batch_size=8,
+            columns=[0], provider=provider,
         )
 
         with no_network():
-            result = translate_csv(
-                source,
-                "en",
-                "fr",
-                output_path=output,
-                columns=[0],
-                provider=provider,
-                config=config,
-            )
+            result = translate_csv(source, config, output_path=output)
 
         self.assertEqual(self.read_rows(output), [["text"], ["retried:hello"]])
         self.assertEqual(len(provider.calls), 2)
@@ -59,7 +52,7 @@ class RetryAndFallbackTests(CsvTestCase):
         fallback = RecordingProvider(prefix="fallback:", name="fallback")
 
         with no_network():
-            result = translate_csv(
+            result = translate(
                 source,
                 "en",
                 "fr",
@@ -84,7 +77,7 @@ class RetryAndFallbackTests(CsvTestCase):
         primary = AlwaysFailProvider(name="only-provider")
 
         with no_network():
-            result = translate_csv(
+            result = translate(
                 source,
                 "en",
                 "fr",
@@ -106,7 +99,7 @@ class RetryAndFallbackTests(CsvTestCase):
         output = self.path("auth.out.csv")
         provider = AuthenticationFailProvider()
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -132,7 +125,7 @@ class BatchValidationAndSplittingTests(CsvTestCase):
         output = self.path("context.out.csv")
         provider = ContextLimitUntilSingleProvider()
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -161,7 +154,7 @@ class BatchValidationAndSplittingTests(CsvTestCase):
         output = self.path("split.out.csv")
         provider = SplitUntilSingleProvider()
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -190,7 +183,7 @@ class BatchValidationAndSplittingTests(CsvTestCase):
         output = self.path("order.out.csv")
 
         provider = ReverseResponseProvider()
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -218,7 +211,7 @@ class BatchValidationAndSplittingTests(CsvTestCase):
         output = self.path("correct.out.csv")
         provider = CorrectableMalformedProvider()
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -258,7 +251,7 @@ class AdaptiveAndResponseSafetyTests(CsvTestCase):
         output = self.path("adaptive.out.csv")
         provider = ContextBoundProvider()
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -302,7 +295,7 @@ class AdaptiveAndResponseSafetyTests(CsvTestCase):
         output = self.path("corrective.out.csv")
         provider = CorrectiveProvider()
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -333,7 +326,7 @@ class AdaptiveAndResponseSafetyTests(CsvTestCase):
         source = self.write_rows("empty-result.csv", [["text"], ["hello"]])
         output = self.path("empty-result.out.csv")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -352,7 +345,7 @@ class AdaptiveAndResponseSafetyTests(CsvTestCase):
         output = self.path("encoding-result.out.csv")
         provider = RecordingProvider(prefix="é")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -377,7 +370,7 @@ class OperationalHookTests(CsvTestCase):
         def broken_callback(event):
             raise RuntimeError("synthetic callback error")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -396,7 +389,7 @@ class OperationalHookTests(CsvTestCase):
         source = self.write_rows("dry-cancel.csv", [["text"], ["hello"]])
         output = self.path("dry-cancel.out.csv")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -421,7 +414,7 @@ class PartialFailureAndReportTests(CsvTestCase):
         output = self.path("partial.out.csv")
         provider = RejectTextProvider("bad")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -462,7 +455,7 @@ class PartialFailureAndReportTests(CsvTestCase):
         provider = RejectTextProvider("TOP SECRET CELL", name="safe-local")
         provider.api_key = "sk-DO-NOT-SERIALIZE"
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",

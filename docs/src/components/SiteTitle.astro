@@ -1,0 +1,12 @@
+---
+// Brand lockup: tilde-tile mark + mono wordmark with the accent hyphen.
+// The mark is theme-invariant, so a single asset serves both themes.
+import mark from "../assets/mark.svg";
+
+const base = import.meta.env.BASE_URL;
+---
+
+<a href={base} class="site-title sl-flex" aria-label="csv-trans — home">
+  <img src={mark.src} alt="" width="22" height="22" class="site-title__mark" />
+  <span class="site-title__text">csv<span class="site-title__hyphen">-</span>trans</span>
+</a>

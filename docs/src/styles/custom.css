@@ -1,0 +1,1036 @@
+/* ==========================================================================
+   csv-trans — documentation design system
+   --------------------------------------------------------------------------
+   Principles
+   - Near-monochrome: a cool ink/paper neutral ramp does almost all the work.
+   - ONE accent (restrained cobalt) reserved for links, active nav, focus.
+   - One type system: Inter (UI/body) + JetBrains Mono (code). Bundled offline.
+   - Editorial tables, quiet code chrome, flat callouts. No decoration.
+   - Motion is limited to ≤120ms color/opacity transitions and honors
+     prefers-reduced-motion.
+
+   TYPE SCALE (the only sizes used anywhere)
+     11px  0.6875rem  — fine print, kbd, sidebar group labels
+     12px  0.75rem    — captions, badges, code frame titles
+     13px  0.8125rem  — sidebar links, TOC, table headers, small UI
+     14px  0.875rem   — secondary prose, cards, footer
+     16px  1rem       — body
+     19px  1.1875rem  — h4 / large body (lede)
+     23px  1.4375rem  — h3
+     28px  1.75rem    — h2
+     34px  2.125rem   — h1
+   Weights: 400 body · 500 UI/links · 600 headings/strong (650 for h1).
+   Line heights: 1.7 body · 1.25 headings. Tracking: -0.015em on headings.
+
+   SPACING RHYTHM: multiples of 0.25rem; section gap 2.5rem; para gap 1rem.
+   RADII: 6px (small controls), 8px (cards, code), 10px (page-level panels).
+   ========================================================================== */
+
+@import '@fontsource-variable/inter/wght.css';
+@import '@fontsource-variable/jetbrains-mono/wght.css';
+
+/* --------------------------------------------------------------------------
+   1 · Color tokens
+   Neutrals: cool "ink on paper" ramp. Accent: cobalt, AA in both themes.
+   -------------------------------------------------------------------------- */
+
+:root {
+  --sl-font: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --sl-font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Dark theme (Starlight default scope) */
+  --sl-color-white: #EDEEF0;      /* headings, strong */
+  --sl-color-gray-1: #D3D5D9;     /* high-emphasis text */
+  --sl-color-gray-2: #AFB3BA;     /* body text */
+  --sl-color-gray-3: #81868F;     /* muted text */
+  --sl-color-gray-4: #4D525B;     /* faint strokes, icons */
+  --sl-color-gray-5: #24262B;     /* borders */
+  --sl-color-gray-6: #17181C;     /* raised surfaces, code bg */
+  --sl-color-black: #101114;      /* page background */
+
+  --sl-color-accent-low: #1E2452; /* tinted fills */
+  --sl-color-accent: #5462DD;     /* solid accent surfaces */
+  --sl-color-accent-high: #B9C1FA;/* accent text on tinted fills */
+  --sl-color-text-accent: #9AA5F8;/* links: 6.2:1 on #101114 */
+
+  --sl-color-bg-nav: var(--sl-color-black);
+  --sl-color-bg-sidebar: var(--sl-color-black);
+  --sl-color-bg-inline-code: var(--sl-color-gray-6);
+  --sl-color-hairline: var(--sl-color-gray-5);
+  --sl-color-hairline-light: var(--sl-color-gray-5);
+  --sl-color-hairline-shade: var(--sl-color-gray-5);
+
+  /* Semantic tokens used by this stylesheet */
+  --csv-border: var(--sl-color-gray-5);
+  --csv-surface: var(--sl-color-gray-6);
+  --csv-surface-subtle: #141519;
+  --csv-code-bg: #141519;
+  --csv-amber: #B08543;           /* caution asides only, low chroma */
+  --csv-red: #C4766F;             /* danger asides only, low chroma */
+
+  /* Type scale exposed to Starlight */
+  --sl-text-2xs: 0.6875rem;
+  --sl-text-xs: 0.75rem;
+  --sl-text-sm: 0.8125rem;
+  --sl-text-base: 1rem;
+  --sl-text-body: var(--sl-text-base);
+  --sl-text-body-sm: 0.875rem;
+  --sl-text-code: 0.875rem;
+  --sl-text-code-sm: 0.8125rem;
+  --sl-text-h1: 2.125rem;
+  --sl-text-h2: 1.75rem;
+  --sl-text-h3: 1.4375rem;
+  --sl-text-h4: 1.1875rem;
+  --sl-text-h5: 1rem;
+  --sl-line-height: 1.7;
+  --sl-line-height-headings: 1.25;
+
+  --sl-nav-height: 3.5rem;
+  --sl-content-width: 47rem;
+
+  /* Neutralize Starlight's decorative shadows */
+  --sl-shadow-sm: none;
+  --sl-shadow-md: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --sl-shadow-lg: 0 4px 24px -8px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme='light'] {
+  --sl-color-white: #15171B;
+  --sl-color-gray-1: #2B2E35;
+  --sl-color-gray-2: #43474F;
+  --sl-color-gray-3: #686D77;
+  --sl-color-gray-4: #A2A6AF;
+  --sl-color-gray-5: #E1E3E7;
+  --sl-color-gray-6: #F4F5F7;
+  --sl-color-gray-7: #F9FAFB;
+  --sl-color-black: #FFFFFF;
+
+  --sl-color-accent-low: #E8EAFC;
+  --sl-color-accent: #4050D6;
+  --sl-color-accent-high: #232C82;
+  --sl-color-text-accent: #4050D6;  /* 6.4:1 on #FFFFFF */
+
+  --sl-color-bg-nav: var(--sl-color-black);
+  --sl-color-bg-sidebar: var(--sl-color-black);
+  --sl-color-bg-inline-code: var(--sl-color-gray-6);
+  --sl-color-hairline: var(--sl-color-gray-5);
+  --sl-color-hairline-light: var(--sl-color-gray-5);
+  --sl-color-hairline-shade: var(--sl-color-gray-5);
+
+  --csv-border: var(--sl-color-gray-5);
+  --csv-surface: var(--sl-color-gray-6);
+  --csv-surface-subtle: var(--sl-color-gray-7);
+  --csv-code-bg: #F7F8F9;
+  --csv-amber: #8A6320;
+  --csv-red: #A8453C;
+
+  --sl-shadow-md: 0 1px 2px rgba(21, 23, 27, 0.06);
+  --sl-shadow-lg: 0 4px 24px -8px rgba(21, 23, 27, 0.10);
+}
+
+/* --------------------------------------------------------------------------
+   2 · Base typography
+   -------------------------------------------------------------------------- */
+
+body {
+  font-feature-settings: 'cv05' 1, 'cv11' 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.sl-markdown-content {
+  font-size: var(--sl-text-base);
+  color: var(--sl-color-gray-2);
+}
+
+h1, h2, h3, h4, h5 {
+  color: var(--sl-color-white);
+  letter-spacing: -0.015em;
+  font-weight: 600;
+}
+
+h1 { font-weight: 650; letter-spacing: -0.02em; }
+
+/* Section rhythm: every h2 opens a new section under a full-width hairline.
+   Starlight wraps headings in .sl-heading-wrapper, so the rule lives there. */
+.sl-markdown-content .sl-heading-wrapper.level-h2:not(:where(.not-content *)) {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--csv-border);
+}
+.sl-markdown-content .sl-heading-wrapper.level-h2 > h2 { margin-top: 0; }
+/* A page that opens directly on an h2 gets no extra rule under the title */
+.sl-markdown-content > .sl-heading-wrapper.level-h2:first-child {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.sl-markdown-content .sl-heading-wrapper.level-h3:not(:where(.not-content *)) {
+  margin-top: 2.25rem;
+}
+
+.sl-anchor-link { color: var(--sl-color-gray-4); }
+
+.sl-markdown-content strong {
+  color: var(--sl-color-gray-1);
+  font-weight: 600;
+}
+
+/* Lede: the first paragraph directly under the H1 reads slightly larger */
+.sl-markdown-content > p:first-child:not(:where(.not-content *)) {
+  font-size: var(--sl-text-h5);
+  line-height: 1.65;
+  color: var(--sl-color-gray-2);
+}
+
+/* Links: accent color, quiet underline that resolves on hover */
+.sl-markdown-content a:not(:where(.not-content *)) {
+  color: var(--sl-color-text-accent);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+  text-decoration-color: color-mix(in srgb, var(--sl-color-text-accent) 35%, transparent);
+  transition: text-decoration-color 120ms ease;
+}
+.sl-markdown-content a:hover:not(:where(.not-content *)) {
+  text-decoration-color: currentColor;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--sl-color-accent) 25%, transparent);
+}
+
+/* Focus: one visible ring everywhere (containers excepted — focus lands on
+   the control inside, not the surface) */
+:focus-visible {
+  outline: 2px solid var(--sl-color-text-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+dialog:focus-visible { outline: none; }
+
+/* Page title row: H1 + "Copy page" control */
+.page-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.copy-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  margin-top: 0.625rem;
+  border: 1px solid var(--csv-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sl-color-gray-2);
+  font-family: var(--sl-font);
+  font-size: var(--sl-text-sm);
+  font-weight: 500;
+  padding: 0.375rem 0.6875rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.copy-page:hover {
+  border-color: var(--sl-color-gray-4);
+  color: var(--sl-color-gray-1);
+}
+.copy-page svg { color: var(--sl-color-gray-3); flex: none; }
+.copy-page__hint {
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-text-2xs);
+  color: var(--sl-color-gray-3);
+  border-left: 1px solid var(--csv-border);
+  padding-left: 0.4375rem;
+}
+
+/* --------------------------------------------------------------------------
+   3 · Header & site frame
+   -------------------------------------------------------------------------- */
+
+header.header {
+  border-bottom: 1px solid var(--csv-border);
+  background-color: var(--sl-color-bg-nav);
+}
+
+.site-title {
+  font-family: var(--sl-font-mono);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--sl-color-white);
+  gap: 0.625rem;
+  text-decoration: none;
+  align-items: center;
+}
+.site-title img { height: 1.375rem; width: auto; }
+.site-title__hyphen { color: var(--sl-color-text-accent); }
+
+/* Search bar: quiet control */
+button[data-open-modal] {
+  border: 1px solid var(--csv-border);
+  background-color: var(--csv-surface-subtle);
+  border-radius: 8px;
+  color: var(--sl-color-gray-3);
+  font-size: var(--sl-text-sm);
+  transition: border-color 120ms ease, color 120ms ease;
+}
+button[data-open-modal]:hover {
+  border-color: var(--sl-color-gray-4);
+  color: var(--sl-color-gray-2);
+}
+/* Starlight nests <kbd><kbd>Ctrl</kbd><kbd>K</kbd></kbd>: draw ONE quiet
+   pill around the pair and strip all chrome from the inner keys. */
+button[data-open-modal] > kbd {
+  background-color: transparent;
+  border: 1px solid var(--csv-border);
+  border-radius: 4px;
+  padding: 0.1875rem 0.4375rem;
+  gap: 0.3125rem;
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-text-2xs);
+  color: var(--sl-color-gray-3);
+}
+button[data-open-modal] > kbd kbd {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+}
+
+/* Social / theme controls */
+.social-icons a,
+starlight-theme-select select {
+  color: var(--sl-color-gray-3);
+  transition: color 120ms ease;
+}
+.social-icons a:hover { color: var(--sl-color-gray-1); opacity: 1; }
+
+/* --------------------------------------------------------------------------
+   4 · Sidebar
+   -------------------------------------------------------------------------- */
+
+.sidebar-pane {
+  border-inline-end: 1px solid var(--csv-border);
+  background-color: var(--sl-color-bg-sidebar);
+}
+
+sl-sidebar-state-persist ul li {
+  --sl-sidebar-item-padding-inline: 0.625rem;
+  border-inline-start: 0;
+}
+
+.sidebar-content {
+  padding-top: 1.25rem;
+}
+
+.sidebar-content summary {
+  padding-block: 0.375rem;
+}
+
+/* Group labels: small caps treatment via size + spacing, not text-transform */
+.sidebar-content .large,
+.sidebar-content summary .group-label span.large {
+  font-size: var(--sl-text-sm);
+  font-weight: 600;
+  color: var(--sl-color-gray-1);
+}
+
+.sidebar-content a {
+  font-size: var(--sl-text-sm);
+  font-weight: 450;
+  color: var(--sl-color-gray-3);
+  border-radius: 6px;
+  padding-block: 0.3125rem;
+  transition: color 120ms ease, background-color 120ms ease;
+}
+.sidebar-content a:hover {
+  color: var(--sl-color-gray-1);
+  background-color: var(--csv-surface);
+}
+.sidebar-content a[aria-current='page'],
+.sidebar-content a[aria-current='page']:hover {
+  background-color: var(--sl-color-accent-low);
+  color: var(--sl-color-accent-high);
+  font-weight: 550;
+}
+:root[data-theme='light'] .sidebar-content a[aria-current='page'],
+:root[data-theme='light'] .sidebar-content a[aria-current='page']:hover {
+  color: var(--sl-color-accent-high);
+}
+
+.sidebar-content .caret { color: var(--sl-color-gray-4); }
+
+/* --------------------------------------------------------------------------
+   5 · Right rail — "On this page"
+   -------------------------------------------------------------------------- */
+
+.right-sidebar {
+  border-inline-start: 1px solid var(--csv-border);
+}
+
+.right-sidebar h2 {
+  font-size: var(--sl-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sl-color-gray-3);
+}
+
+.right-sidebar a {
+  --pad-inline: 0.5rem;
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-3);
+  transition: color 120ms ease;
+}
+.right-sidebar a:hover { color: var(--sl-color-gray-1); }
+.right-sidebar a[aria-current='true'],
+.right-sidebar a[aria-current='true']:hover {
+  color: var(--sl-color-text-accent);
+  font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   6 · Code
+   -------------------------------------------------------------------------- */
+
+/* Inline code: hairline chip, same ink as prose */
+.sl-markdown-content code:not(:where(.expressive-code *)) {
+  background-color: var(--sl-color-bg-inline-code);
+  border: 1px solid var(--csv-border);
+  border-radius: 5px;
+  padding: 0.125em 0.375em;
+  font-size: 0.85em;
+  color: var(--sl-color-gray-1);
+}
+
+/* Block code — chrome is configured via expressiveCode.styleOverrides in
+   astro.config.mjs (border, background, fonts, flat frame headers). Only
+   details EC does not expose live here. */
+.expressive-code .frame.has-title .title {
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-text-xs);
+  font-weight: 500;
+}
+
+.expressive-code .copy button {
+  border-radius: 6px;
+  transition: opacity 120ms ease;
+}
+
+/* --------------------------------------------------------------------------
+   7 · Tables — editorial: horizontal hairlines only, generous padding
+   -------------------------------------------------------------------------- */
+
+.sl-markdown-content .table-scroll {
+  overflow-x: auto;
+  margin-block: 1.25rem;
+}
+.sl-markdown-content .table-scroll table { margin: 0; }
+
+/* On narrow viewports, wide tables keep sane column widths and scroll
+   inside their wrapper instead of squishing. */
+@media (max-width: 50rem) {
+  .sl-markdown-content .table-scroll table { min-width: 38rem; }
+}
+
+.sl-markdown-content table:not(:where(.not-content *)) {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--sl-text-body-sm);
+  line-height: 1.55;
+}
+
+.sl-markdown-content thead th:not(:where(.not-content *)) {
+  font-size: var(--sl-text-sm);
+  font-weight: 600;
+  color: var(--sl-color-gray-1);
+  text-align: left;
+  border-bottom: 1px solid var(--sl-color-gray-4);
+  padding: 0.5rem 1.25rem 0.5rem 0;
+  white-space: nowrap;
+}
+
+.sl-markdown-content td:not(:where(.not-content *)) {
+  border: 0;
+  border-bottom: 1px solid var(--csv-border);
+  padding: 0.625rem 1.25rem 0.625rem 0;
+  vertical-align: top;
+  color: var(--sl-color-gray-2);
+}
+
+.sl-markdown-content :is(th, td):last-child:not(:where(.not-content *)) {
+  padding-inline-end: 0;
+}
+
+/* Kill Starlight's zebra striping */
+.sl-markdown-content tr:nth-child(2n):not(:where(.not-content *)) {
+  background-color: transparent;
+}
+
+.sl-markdown-content td code:not(:where(.not-content *)) {
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   8 · Asides / callouts — flat, hairline left rule, tinted only faintly
+   -------------------------------------------------------------------------- */
+
+.starlight-aside {
+  border: 1px solid var(--csv-border);
+  border-inline-start: 2px solid var(--sl-color-gray-4);
+  border-radius: 0 8px 8px 0;
+  background-color: var(--csv-surface-subtle);
+  padding: 0.875rem 1.125rem;
+  color: var(--sl-color-gray-2);
+  font-size: var(--sl-text-body-sm);
+}
+.starlight-aside__title {
+  font-size: var(--sl-text-sm);
+  font-weight: 600;
+  color: var(--sl-color-gray-1);
+  gap: 0.5rem;
+}
+.starlight-aside__icon { transform: scale(0.85); }
+.starlight-aside__content { margin-top: 0.375rem; }
+.starlight-aside__content a { color: var(--sl-color-text-accent); }
+
+.starlight-aside--note {
+  border-inline-start-color: var(--sl-color-accent);
+}
+.starlight-aside--note .starlight-aside__title { color: var(--sl-color-text-accent); }
+
+.starlight-aside--tip {
+  border-inline-start-color: var(--sl-color-gray-4);
+}
+
+.starlight-aside--caution {
+  border-inline-start-color: var(--csv-amber);
+}
+.starlight-aside--caution .starlight-aside__title { color: var(--csv-amber); }
+
+.starlight-aside--danger {
+  border-inline-start-color: var(--csv-red);
+}
+.starlight-aside--danger .starlight-aside__title { color: var(--csv-red); }
+
+/* --------------------------------------------------------------------------
+   8b · Pipeline diagram (How it works)
+   A vertical stepper: numbered nodes on a hairline rail, one phase per row.
+   Monochrome; the accent appears once, on the "keep original" guarantee.
+   -------------------------------------------------------------------------- */
+
+.pipeline {
+  margin: 1.75rem 0 0.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.pipeline__phase {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.25rem 1fr;
+  column-gap: 1.125rem;
+  padding-bottom: 2rem;
+}
+.pipeline__phase:last-child { padding-bottom: 0.5rem; }
+
+/* Rail connecting the nodes */
+.pipeline__phase:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: calc(1.125rem - 0.5px);
+  top: 2.5rem;
+  bottom: 0.25rem;
+  width: 1px;
+  background: var(--csv-border);
+}
+
+.pipeline__node {
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--sl-color-gray-4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-text-sm);
+  font-weight: 600;
+  color: var(--sl-color-gray-1);
+  background: var(--sl-color-black);
+}
+
+.pipeline__title {
+  font-weight: 600;
+  font-size: var(--sl-text-base);
+  color: var(--sl-color-white);
+  line-height: 2.25rem;  /* optically centers against the node */
+  letter-spacing: -0.01em;
+}
+
+.pipeline__steps {
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+  font-size: var(--sl-text-body-sm);
+  line-height: 1.55;
+  color: var(--sl-color-gray-2);
+}
+.pipeline__steps li {
+  position: relative;
+  padding-left: 1rem;
+}
+.pipeline__steps li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.72em;
+  width: 0.4375rem;
+  height: 1px;
+  background: var(--sl-color-gray-4);
+}
+.pipeline__steps small {
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-3);
+}
+.pipeline__steps small::before { content: ' — '; }
+
+.pipeline__recover {
+  margin-top: 0.875rem;
+  border: 1px solid var(--csv-border);
+  border-radius: 8px;
+  background: var(--csv-surface-subtle);
+  padding: 0.75rem 1rem 0.875rem;
+}
+.pipeline__recover-label {
+  display: block;
+  font-size: var(--sl-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sl-color-gray-3);
+  margin-bottom: 0.625rem;
+}
+
+.ladder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.375rem;
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-text-xs);
+}
+.ladder span {
+  position: relative;
+  border: 1px solid var(--csv-border);
+  border-radius: 5px;
+  background: var(--sl-color-black);
+  color: var(--sl-color-gray-2);
+  padding: 0.25rem 0.5625rem;
+  white-space: nowrap;
+}
+.ladder span:not(:last-child)::after {
+  content: '\2192';
+  position: absolute;
+  right: -1.0625rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--sl-color-gray-4);
+  font-family: var(--sl-font);
+}
+.ladder .ladder__end {
+  border-color: color-mix(in srgb, var(--sl-color-accent) 55%, transparent);
+  color: var(--sl-color-text-accent);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   9 · Link cards (section index pages)
+   -------------------------------------------------------------------------- */
+
+.sl-link-card {
+  border: 1px solid var(--csv-border);
+  border-radius: 8px;
+  background-color: var(--csv-surface-subtle);
+  box-shadow: none;
+}
+
+.sl-link-card {
+  padding: 1rem 1.125rem;
+  transition: border-color 120ms ease;
+}
+.sl-link-card:hover {
+  background-color: var(--csv-surface-subtle);
+  border-color: var(--sl-color-gray-4);
+}
+.sl-link-card a,
+.sl-markdown-content .sl-link-card a:not(:where(.not-content *)) {
+  text-decoration: none;
+}
+.sl-link-card .title {
+  font-size: var(--sl-text-base);
+  font-weight: 600;
+  color: var(--sl-color-white);
+}
+.sl-link-card .description {
+  font-size: var(--sl-text-body-sm);
+  line-height: 1.55;
+  color: var(--sl-color-gray-3);
+}
+.sl-link-card .icon { color: var(--sl-color-gray-4); }
+
+/* --------------------------------------------------------------------------
+   10 · Page furniture
+   -------------------------------------------------------------------------- */
+
+/* Breadcrumb-ish meta, edit link, last-updated, pagination */
+.content-panel + .content-panel { border-top: 1px solid var(--csv-border); }
+
+footer.meta, .meta.sl-flex { gap: 0.75rem; }
+footer a, .pagination-links a { transition: color 120ms ease, border-color 120ms ease; }
+
+.pagination-links a {
+  border: 1px solid var(--csv-border);
+  border-radius: 8px;
+  box-shadow: none;
+}
+.pagination-links a:hover { border-color: var(--sl-color-gray-4); }
+.pagination-links a .link-title {
+  font-size: var(--sl-text-base);
+  font-weight: 600;
+  color: var(--sl-color-white);
+}
+.pagination-links a svg { color: var(--sl-color-gray-4); }
+
+/* Search modal */
+dialog[aria-label] { border: 1px solid var(--csv-border); border-radius: 10px; }
+
+/* Mobile TOC bar */
+mobile-starlight-toc nav {
+  border-color: var(--csv-border);
+  background-color: var(--sl-color-bg-nav);
+}
+
+/* Mobile menu button: quiet outline control instead of a solid disc */
+starlight-menu-button button {
+  background-color: var(--csv-surface);
+  color: var(--sl-color-gray-1);
+  border: 1px solid var(--csv-border);
+  box-shadow: none;
+}
+starlight-menu-button[aria-expanded='true'] button {
+  background-color: var(--csv-surface);
+  color: var(--sl-color-gray-1);
+}
+
+/* --------------------------------------------------------------------------
+   11 · Home — "The Sheet"
+   A composed landing: centered hero on a fading spreadsheet grid, one
+   product shot (an in-place translation sheet), editorial props, quickstart.
+   All custom markup lives in src/content/docs/index.mdx under `.home`.
+   -------------------------------------------------------------------------- */
+
+:root {
+  --csv-btn-bg: #4654D6;
+  --csv-btn-bg-hover: #5361E2;
+  --home-grid-line: rgba(237, 238, 240, 0.05);
+}
+:root[data-theme='light'] {
+  --csv-btn-bg: #4050D6;
+  --csv-btn-bg-hover: #3444BE;
+  --home-grid-line: rgba(21, 23, 27, 0.05);
+}
+
+/* The home page manages its own section widths */
+.sl-markdown-content:has(.home) { max-width: none; }
+main:has(.home) { position: relative; }
+
+/* Faint spreadsheet grid behind the hero, fading out radially */
+main:has(.home)::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 44rem;
+  pointer-events: none;
+  /* Columns only — no horizontal line can read as a border */
+  background-image: linear-gradient(90deg, var(--home-grid-line) 1px, transparent 1px);
+  background-size: 56px 100%;
+  background-position: 50% 0;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 6rem, #000 50%, transparent 90%);
+  mask-image: linear-gradient(to bottom, transparent, #000 6rem, #000 50%, transparent 90%);
+}
+
+.home { position: relative; padding-bottom: 3rem; }
+
+/* The home page is not an editable doc */
+main:has(.home) footer .meta { display: none; }
+.home-headline { text-wrap: balance; }
+
+/* On the landing, the hero grid meets the navbar directly — no hairline */
+body:has(.home) header.header { border-bottom-color: transparent; }
+
+/* --- Hero ------------------------------------------------------------- */
+
+.home-hero {
+  max-width: 47rem;
+  margin: 3.5rem auto 0;
+  text-align: center;
+}
+
+.home-headline {
+  margin: 1.125rem auto 0;
+  max-width: 17ch;
+  font-size: clamp(2.375rem, 5.2vw, 3.375rem);
+  font-weight: 675;
+  letter-spacing: -0.035em;
+  line-height: 1.07;
+  color: var(--sl-color-white);
+}
+.home-headline em {
+  font-style: normal;
+  color: var(--sl-color-text-accent);
+}
+
+.home-sub {
+  max-width: 40rem;
+  margin: 1.375rem auto 0;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: var(--sl-color-gray-2);
+}
+
+.home-cta {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+.home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 550;
+  padding: 0.625rem 1.25rem;
+  text-decoration: none;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.home-btn--primary {
+  background: var(--csv-btn-bg);
+  border: 1px solid transparent;
+  color: #FFFFFF;
+}
+.home-btn--primary:hover { background: var(--csv-btn-bg-hover); color: #FFFFFF; }
+.home-btn--ghost {
+  border: 1px solid var(--csv-border);
+  color: var(--sl-color-gray-1);
+  background: var(--sl-color-black);
+}
+.home-btn--ghost:hover { border-color: var(--sl-color-gray-4); color: var(--sl-color-white); }
+.home-btn svg { flex: none; }
+.home-btn--ghost svg { color: var(--sl-color-gray-3); }
+
+.home-facts {
+  margin: 1.75rem 0 0;
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-text-sm);
+  letter-spacing: 0.01em;
+  color: var(--sl-color-gray-3);
+}
+
+/* --- The sheet (product shot) ----------------------------------------- */
+
+.home-demo {
+  max-width: 56rem;
+  margin: 3.75rem auto 0;
+}
+
+.sheet {
+  margin: 0;
+  border: 1px solid var(--csv-border);
+  border-radius: 10px;
+  background: var(--sl-color-black);
+  box-shadow: var(--sl-shadow-lg);
+  overflow: hidden;
+}
+
+.sheet__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.625rem 1.125rem;
+  background: var(--csv-surface);
+  border-bottom: 1px solid var(--csv-border);
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-text-xs);
+}
+.sheet__files { color: var(--sl-color-gray-2); }
+.sheet__files i {
+  font-style: normal;
+  color: var(--sl-color-gray-4);
+  padding-inline: 0.375rem;
+}
+.sheet__files b { font-weight: 500; color: var(--sl-color-gray-1); }
+.sheet__cmd { color: var(--sl-color-gray-3); }
+.sheet__cmd::before { content: '$ '; color: var(--sl-color-gray-4); }
+
+.sheet__scroll { overflow-x: auto; }
+
+.sheet__table {
+  width: 100%;
+  min-width: 40rem;
+  border-collapse: collapse;
+  font-family: var(--sl-font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.sheet__table th {
+  text-align: left;
+  font-size: var(--sl-text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--sl-color-gray-3);
+  background: var(--csv-surface-subtle);
+  border-bottom: 1px solid var(--csv-border);
+  padding: 0.5625rem 1.125rem;
+  white-space: nowrap;
+}
+.sheet__table th .tag {
+  margin-left: 0.5rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--sl-color-gray-4);
+}
+.sheet__table th.t { color: var(--sl-color-text-accent); }
+.sheet__table th.t .tag { color: color-mix(in srgb, var(--sl-color-text-accent) 72%, transparent); }
+
+.sheet__table td {
+  padding: 0.6875rem 1.125rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--csv-border) 62%, transparent);
+  vertical-align: top;
+  white-space: nowrap;
+}
+.sheet__table tr:last-child td { border-bottom: 0; }
+.sheet__table td.k { color: var(--sl-color-gray-3); }
+.sheet__table td.t {
+  background: color-mix(in srgb, var(--sl-color-accent) 6%, transparent);
+}
+.sheet__table td.t .out {
+  display: block;
+  font-weight: 500;
+  color: var(--sl-color-gray-1);
+}
+.sheet__table td.t .src {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.71875rem;
+  color: var(--sl-color-gray-3);
+}
+
+.sheet__foot {
+  padding: 0.5625rem 1.125rem;
+  border-top: 1px solid var(--csv-border);
+  background: var(--csv-surface);
+  font-size: var(--sl-text-sm);
+  line-height: 1.5;
+  color: var(--sl-color-gray-3);
+}
+.sheet__foot b {
+  font-weight: 500;
+  color: var(--sl-color-gray-2);
+}
+
+/* --- Props (why) -------------------------------------------------------- */
+
+.home-props {
+  max-width: 56rem;
+  margin: 4.25rem auto 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2rem 3rem;
+}
+@media (max-width: 47rem) {
+  .home-props { grid-template-columns: 1fr; gap: 1.5rem; }
+}
+.home-prop { border-top: 1px solid var(--csv-border); padding-top: 1rem; }
+.home-prop__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--sl-color-white);
+}
+.home-prop__body {
+  margin: 0.4375rem 0 0;
+  font-size: var(--sl-text-body-sm);
+  line-height: 1.6;
+  color: var(--sl-color-gray-3);
+}
+.home-prop__body code {
+  font-size: 0.85em;
+  background: var(--sl-color-bg-inline-code);
+  border: 1px solid var(--csv-border);
+  border-radius: 5px;
+  padding: 0.1em 0.3em;
+  color: var(--sl-color-gray-2);
+}
+
+/* --- Quickstart --------------------------------------------------------- */
+
+.home-quick { max-width: 44rem; margin: 4.25rem auto 0; }
+.home-quick__head { text-align: center; margin-bottom: 1.375rem; }
+.home-quick__head h2 {
+  margin: 0;
+  font-size: 1.4375rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--sl-color-white);
+}
+.home-quick__head p {
+  margin: 0.5rem auto 0;
+  max-width: 38rem;
+  font-size: var(--sl-text-body-sm);
+  line-height: 1.6;
+  color: var(--sl-color-gray-3);
+}
+.home-quick__head a { color: var(--sl-color-text-accent); font-weight: 500; text-decoration: none; }
+.home-quick__head a:hover { text-decoration: underline; text-underline-offset: 0.2em; }
+/* Install bar and usage block stack at one width — no mismatched masses */
+.home-quick__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+}
+.home-quick__grid .expressive-code { margin: 0; }
+
+/* --------------------------------------------------------------------------
+   12 · Motion discipline
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from csv_trans.core import translate_csv
+from csv_trans import translate
 from csv_trans.chunking import split_text_lossless
 
 from tests._support import (
@@ -29,7 +29,7 @@ class AutomaticSelectionTests(CsvTestCase):
         output = self.path("selection.fr.csv")
         provider = RecordingProvider(prefix="fr:")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -60,7 +60,7 @@ class AutomaticSelectionTests(CsvTestCase):
         )
         output = self.path("named.fr.csv")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -82,7 +82,7 @@ class AutomaticSelectionTests(CsvTestCase):
         )
         output = self.path("indexed.fr.csv")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -105,7 +105,7 @@ class AutomaticSelectionTests(CsvTestCase):
         output = self.path("empty.fr.csv")
         provider = RecordingProvider(prefix="fr:")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -129,7 +129,7 @@ class HeaderPolicyTests(CsvTestCase):
         output = self.path("headers.fr.csv")
         provider = RecordingProvider(prefix="fr:")
 
-        translate_csv(
+        translate(
             source,
             "en",
             "fr",
@@ -149,7 +149,7 @@ class HeaderPolicyTests(CsvTestCase):
         output = self.path("translated_headers.fr.csv")
         provider = RecordingProvider(prefix="fr:")
 
-        translate_csv(
+        translate(
             source,
             "en",
             "fr",
@@ -186,7 +186,7 @@ class ChunkReassemblyTests(CsvTestCase):
         output = self.path("protected.out.csv")
         provider = IdentityProvider()
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -212,7 +212,7 @@ class ChunkReassemblyTests(CsvTestCase):
         output = self.path("chunks.out.csv")
         provider = IdentityProvider()
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",

@@ -9,7 +9,8 @@ import unittest
 from unittest.mock import patch
 
 import csv_trans.core as core_module
-from csv_trans.core import PrivacyViolation, translate_csv
+from csv_trans import translate
+from csv_trans.core import PrivacyViolation
 from csv_trans.csvio import (
     AtomicCsvWriter,
     CsvFormat,
@@ -77,7 +78,7 @@ class RecoveryBudgetRegressionTests(CsvTestCase):
                 output = self.path(f"separate-budget-{index}.out.csv")
                 provider = _SequencedProvider(outcomes)
 
-                result = translate_csv(
+                result = translate(
                     source,
                     "en",
                     "fr",
@@ -104,7 +105,7 @@ class RecoveryBudgetRegressionTests(CsvTestCase):
         output = self.path("timeout-batch.out.csv")
         provider = AlwaysFailProvider(name="persistent-timeout")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -133,7 +134,7 @@ class RecoveryBudgetRegressionTests(CsvTestCase):
         primary = _FixedProvider("unicode-primary", "caf\u00e9")
         fallback = _FixedProvider("ascii-fallback", "cafe")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -224,7 +225,7 @@ class CancellationAndResponseBoundRegressionTests(CsvTestCase):
         output = self.path("cancel-final.out.csv")
         provider = CancellingProvider()
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -264,7 +265,7 @@ class CancellationAndResponseBoundRegressionTests(CsvTestCase):
         output = self.path("bounded-generator.out.csv")
         provider = OversupplyingGeneratorProvider()
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -287,7 +288,7 @@ class FailureDetailBoundRegressionTests(CsvTestCase):
         source = self.write_rows("failure-cap-zero.csv", [["text"], ["one"]])
         output = self.path("failure-cap-zero.out.csv")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -313,7 +314,7 @@ class FailureDetailBoundRegressionTests(CsvTestCase):
         )
         output = self.path("failure-cap.out.csv")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -345,7 +346,7 @@ class DialectFailClosedRegressionTests(CsvTestCase):
         output = self.path("ragged-auto.out.csv")
         provider = RecordingProvider(prefix="fr:")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -370,7 +371,7 @@ class DialectFailClosedRegressionTests(CsvTestCase):
         source = self.write_text("ragged-explicit.csv", self.RAGGED_SEMICOLON)
         output = self.path("ragged-explicit.out.csv")
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",
@@ -409,7 +410,7 @@ class FilesystemBoundaryRegressionTests(CsvTestCase):
         provider = RecordingProvider(prefix="fr:")
 
         with self.assertRaises(OutputExistsError):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -431,7 +432,7 @@ class FilesystemBoundaryRegressionTests(CsvTestCase):
         provider = RecordingProvider(prefix="fr:")
 
         with self.assertRaises(OutputExistsError):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -456,7 +457,7 @@ class FilesystemBoundaryRegressionTests(CsvTestCase):
         )
 
         with self.assertRaises(PrivacyViolation):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -480,7 +481,7 @@ class FilesystemBoundaryRegressionTests(CsvTestCase):
         provider = self._mutating_provider("append-source", append_source)
 
         with self.assertRaises(CsvInputError):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -505,7 +506,7 @@ class FilesystemBoundaryRegressionTests(CsvTestCase):
         provider = self._mutating_provider("replace-source", replace_source)
 
         with self.assertRaises(CsvInputError):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -535,7 +536,7 @@ class FilesystemBoundaryRegressionTests(CsvTestCase):
             patch("csv_trans.csvio.os.fsync", side_effect=fsync_then_change_source),
             self.assertRaises(CsvInputError),
         ):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -563,7 +564,7 @@ class FilesystemBoundaryRegressionTests(CsvTestCase):
             patch.object(Path, "unlink", reject_snapshot_unlink),
             self.assertRaisesRegex(CsvInputError, "private input snapshot"),
         ):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -623,7 +624,7 @@ class FilesystemBoundaryRegressionTests(CsvTestCase):
             ),
             self.assertRaisesRegex(OSError, "CSV commit failure"),
         ):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -652,7 +653,7 @@ class FilesystemBoundaryRegressionTests(CsvTestCase):
             ),
             self.assertRaisesRegex(OSError, "CSV commit failure"),
         ):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -691,7 +692,7 @@ class FilesystemBoundaryRegressionTests(CsvTestCase):
             ),
             self.assertRaisesRegex(OSError, "post-publish identity failure"),
         ):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -726,7 +727,7 @@ class FilesystemBoundaryRegressionTests(CsvTestCase):
             ),
             self.assertRaisesRegex(OSError, "post-publish identity failure"),
         ):
-            translate_csv(
+            translate(
                 source,
                 "en",
                 "fr",
@@ -753,7 +754,7 @@ class FilesystemBoundaryRegressionTests(CsvTestCase):
                     target_language=target_language,
                 )
 
-        translate_csv(
+        translate(
             source,
             "en",
             "fr",

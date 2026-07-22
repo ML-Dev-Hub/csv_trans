@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import functools
 import json
+import math
 import socket
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, Callable
 from urllib.error import URLError
 
 from csv_trans.exceptions import (
+    ErrorCategory,
     ProviderAuthenticationError,
+    ProviderConfigurationError,
     ProviderConnectionError,
     ProviderContextLimitError,
     ProviderError,
@@ -71,6 +75,88 @@ def validate_translation_request(
             )
         seen.add(item.id)
     return materialized
+
+
+def validate_timeout(timeout: Any, *, provider: str) -> None:
+    """Reject a non-finite or non-positive HTTP timeout (shared by adapters)."""
+
+    if (
+        isinstance(timeout, bool)
+        or not isinstance(timeout, (int, float))
+        or not math.isfinite(timeout)
+        or timeout <= 0
+    ):
+        raise ProviderConfigurationError(
+            "timeout must be a finite number greater than zero", provider=provider
+        )
+
+
+def validate_temperature(temperature: Any, *, provider: str) -> None:
+    """Reject a non-finite or negative sampling temperature (shared by adapters)."""
+
+    if temperature is not None and (
+        isinstance(temperature, bool)
+        or not isinstance(temperature, (int, float))
+        or (isinstance(temperature, float) and not math.isfinite(temperature))
+        or temperature < 0
+    ):
+        raise ProviderConfigurationError(
+            "temperature must be a finite non-negative number or None",
+            provider=provider,
+        )
+
+
+def scrubbed_provider_call(method: Callable[..., Any]) -> Callable[..., Any]:
+    """Wrap a public adapter translate method with the leak-proof error boundary.
+
+    Any ``ProviderError`` leaving the wrapped method is scrubbed (traceback /
+    cause / context severed) and re-raised ``from None`` with every
+    request-bearing local (self, items, source/target language) cleared from
+    this frame, so no credential or source text survives in the propagating
+    traceback's frame locals.
+    """
+
+    @functools.wraps(method)
+    def wrapper(self, items, *, source_language, target_language):  # type: ignore[no-untyped-def]
+        try:
+            return method(
+                self,
+                items,
+                source_language=source_language,
+                target_language=target_language,
+            )
+        except ProviderError as error:
+            safe_error = scrub_provider_error(error)
+        self = None  # type: ignore[assignment]
+        items = ()
+        source_language = None
+        target_language = ""
+        raise safe_error from None
+
+    return wrapper
+
+
+def validate_extra_headers(
+    extra_headers: Mapping[str, str] | None, *, provider: str
+) -> None:
+    """Reject non-string header names/values before they reach request building.
+
+    A non-string key would raise ``AttributeError`` from ``name.casefold()`` deep
+    in the adapter, escaping the ``except ProviderError`` scrub boundary with the
+    API key still live in a traceback frame's locals. Validate eagerly instead.
+    """
+
+    if extra_headers is None:
+        return
+    if not isinstance(extra_headers, Mapping):
+        raise ProviderConfigurationError(
+            "extra_headers must be a mapping of str to str", provider=provider
+        )
+    for name, value in extra_headers.items():
+        if not isinstance(name, str) or not isinstance(value, str):
+            raise ProviderConfigurationError(
+                "extra_headers names and values must be strings", provider=provider
+            )
 
 
 def json_request_body(value: Any, *, provider: str) -> bytes:
@@ -140,6 +226,29 @@ def send_request(
         failure = ProviderConnectionError(
             "Could not connect to the provider endpoint", provider=provider
         )
+    except Exception as unexpected:  # noqa: BLE001 - normalize any client failure
+        # A custom or buggy HttpClient can raise an unforeseen exception whose
+        # live traceback still holds the request headers (Authorization /
+        # x-api-key), body, and URL in its frame locals. Error reporters such as
+        # Sentry capture frame locals by default, so an unnormalized escape here
+        # would leak the credential. Force every such failure across the boundary
+        # as a scrubbed ProviderError so no request-bearing frame survives.
+        if isinstance(unexpected, ProviderError):
+            failure = scrub_provider_error(unexpected)
+        else:
+            # A deterministic client bug (e.g. a wrapper that raises
+            # UnicodeEncodeError on every call) is not a transport failure and
+            # cannot succeed on retry: normalize it to a NON-retryable unknown
+            # ProviderError rather than a retryable connection error, keeping it
+            # scrubbed so no request-bearing frame survives. Genuine transport
+            # failures keep their retryable mapping via the clauses above.
+            failure = ProviderError(
+                "provider HTTP client raised an unexpected error",
+                provider=provider,
+                category=ErrorCategory.UNKNOWN,
+                retryable=False,
+            )
+        unexpected = None  # type: ignore[assignment]
 
     # Raise outside the transport exception handler and clear request-bearing
     # locals. This prevents a normalized error's cause/context from retaining a
@@ -166,6 +275,8 @@ def _looks_like_context_limit(response: HttpResponse) -> bool:
         "token limit",
         "request too large",
         "payload too large",
+        "prompt is too long",  # Anthropic Messages API token-overflow phrasing
+        "maximum allowed number of tokens",
     )
     return any(marker in body for marker in markers)
 
@@ -229,16 +340,25 @@ def decode_json_response(response: HttpResponse, *, provider: str) -> Any:
     """Decode a successful response as JSON with a normalized error."""
 
     raise_for_status(response, provider=provider)
-    invalid = False
     try:
         document = response.json()
-    except (LookupError, UnicodeError, json.JSONDecodeError, TypeError, ValueError):
-        invalid = True
-    response = None  # type: ignore[assignment]
-    if invalid:
+    except (
+        LookupError,
+        UnicodeError,
+        json.JSONDecodeError,
+        TypeError,
+        ValueError,
+        RecursionError,
+    ):
+        # RecursionError is not a ValueError: deeply nested JSON must still be
+        # normalized here rather than escaping as a raw error that carries the
+        # response body in its traceback frame locals. Drop the response first
+        # so the raised error's frame retains no body.
+        response = None  # type: ignore[assignment]
         raise ProviderResponseError(
             "Provider returned invalid JSON", provider=provider
         ) from None
+    response = None  # type: ignore[assignment]
     return document
 
 
@@ -303,12 +423,12 @@ def decode_strict_translation_text(
         raise ProviderResponseError(
             "Provider response did not contain translation JSON", provider=provider
         )
-    invalid = False
     try:
         document = _strict_json_loads(content)
-    except (json.JSONDecodeError, ValueError):
-        invalid = True
-    if invalid:
+    except (json.JSONDecodeError, ValueError, RecursionError):
+        # RecursionError (deeply nested provider text) is not a ValueError; catch
+        # it too so the untrusted content is cleared before raising and never
+        # survives in a propagating traceback's frame locals.
         content = ""
         expected_items = ()
         raise ProviderResponseError(

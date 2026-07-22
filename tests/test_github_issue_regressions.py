@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from csv_trans import translate_csv
+from csv_trans import translate
 
 from tests._support import CsvTestCase, status_value
 
@@ -108,7 +108,7 @@ class HistoricalGitHubIssueAcceptanceTests(CsvTestCase):
         output = self.path("issue-15.out.csv")
         provider = _InvalidPayloadProvider()
 
-        result = translate_csv(
+        result = translate(
             source,
             "en",
             "fr",

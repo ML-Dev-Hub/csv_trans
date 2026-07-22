@@ -45,11 +45,13 @@ class EchoProvider:
             target_language=target_language,
         )
         if self._transform is None:
-            return list(validated)
+            # validate_translation_request already returned a fresh list we own.
+            return validated
+        transform = self._transform
         return [
             TranslationItem(
                 item.id,
-                self._transform(item.text, source_language, target_language),
+                transform(item.text, source_language, target_language),
             )
             for item in validated
         ]

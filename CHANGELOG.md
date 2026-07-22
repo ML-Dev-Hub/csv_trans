@@ -74,7 +74,7 @@ All notable changes to `csv-trans` are documented here. The project follows
   spreadsheet formula handling and plaintext crash-residue boundaries are
   documented explicitly.
 
-See [Migrating to v2](docs/MIGRATION_V2.md) for compatibility details.
+See [Migrating to v2](docs/internal/MIGRATION_V2.md) for compatibility details.
 
 ## [1.1.4] - 2023-03-29
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from contextlib import contextmanager
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field
 import hashlib
 from itertools import chain, islice
 import os
@@ -43,14 +43,14 @@ class PrivacyViolation(ValueError):
     """A configured provider would cross the selected network boundary."""
 
 
-class ProviderResponseError(RuntimeError):
+class _ResponseContractError(RuntimeError):
     """A provider returned data that cannot be mapped back to input items."""
 
     category = "malformed"
     retryable = True
 
 
-class ProviderOutputEncodingError(RuntimeError):
+class _OutputEncodingError(RuntimeError):
     """A translation cannot be represented in the requested output codec."""
 
     category = "output_encoding"
@@ -83,6 +83,8 @@ class _CellPlan:
     column_name: str
     original: str
     segments: list[TextSegment]
+    translatable_count: int = 0
+    row: list[str] = field(default_factory=list)
     translations: dict[int, str] = field(default_factory=dict)
     cached_segments: set[int] = field(default_factory=set)
     failures: list[_ItemFailure] = field(default_factory=list)
@@ -164,24 +166,26 @@ class _TranslationCache:
 
 def translate_csv(
     input_path: str | Path,
-    source_language: str | TranslationConfig,
-    target_language: str | None = None,
+    config: TranslationConfig,
     *,
     output_path: str | Path | None = None,
-    config: TranslationConfig | None = None,
-    **options: Any,
 ) -> TranslationResult:
-    """Translate selected CSV fields and return a structured result.
+    """Translate selected CSV fields per ``config`` and return a structured result.
+
+    This is the single typed engine entry point. For the ergonomic
+    string-language form, use :func:`csv_trans.translate`.
 
     The input is sampled only for column selection and then processed in bounded
     row groups.  Output is published atomically after the final row is written.
     Failed cells retain their complete original value and appear in ``failures``.
     """
 
-    normalized = _normalize_config(
-        source_language, target_language, config=config, options=options
-    )
-    return _translate_csv_config(input_path, normalized, output_path=output_path)
+    if not isinstance(config, TranslationConfig):
+        raise TypeError(
+            "translate_csv() requires a TranslationConfig; use csv_trans.translate() "
+            "for the string-language form"
+        )
+    return _translate_csv_config(input_path, config, output_path=output_path)
 
 
 def _translate_csv_config(
@@ -238,17 +242,13 @@ def _translate_csv_snapshot_config(
         privacy=config.privacy,
         input_encoding=inspection.encoding,
         output_encoding=config.output_encoding,
-        dialect=inspection.format.to_dict(),
+        dialect=inspection.csv_format.to_dict(),
     )
     attempts: dict[tuple[int, int], ProviderAttempt] = {}
     cache = _TranslationCache(config.cache_size)
 
     with open_rows(inspection, max_field_chars=config.max_field_chars) as reader:
-        try:
-            headers = next(reader)
-        except StopIteration as exc:
-            raise CsvInputError("input CSV does not contain a header row") from exc
-        _validate_row_limits(headers, config, location="header")
+        headers = _read_header(reader, config)
         sample: list[list[str]] = []
         sample_chars = 0
         for sample_index in range(1, config.sample_rows + 1):
@@ -305,7 +305,7 @@ def _translate_csv_snapshot_config(
     atomic_writer = AtomicCsvWriter(
         destination,
         encoding=config.output_encoding,
-        csv_format=inspection.format,
+        csv_format=inspection.csv_format,
         overwrite=config.overwrite,
         before_commit=validate_before_commit,
     )
@@ -314,11 +314,7 @@ def _translate_csv_snapshot_config(
             with open_rows(
                 inspection, max_field_chars=config.max_field_chars
             ) as reader:
-                try:
-                    headers = next(reader)
-                except StopIteration as exc:
-                    raise CsvInputError("input CSV does not contain a header row") from exc
-                _validate_row_limits(headers, config, location="header")
+                headers = _read_header(reader, config)
                 _validate_output_row(headers, config.output_encoding, location="header")
                 if tuple(headers) != sampled_headers:
                     raise CsvInputError(
@@ -335,7 +331,6 @@ def _translate_csv_snapshot_config(
                         result,
                         attempts,
                         cache,
-                        count_total=True,
                     )[0][1]
                     _check_cancelled(config)
                     _assert_source_metadata_unchanged(source, source_metadata)
@@ -371,7 +366,6 @@ def _translate_csv_snapshot_config(
                             result,
                             attempts,
                             cache,
-                            count_total=True,
                         )
                         _check_cancelled(config)
                         _assert_source_metadata_unchanged(source, source_metadata)
@@ -391,7 +385,6 @@ def _translate_csv_snapshot_config(
                         result,
                         attempts,
                         cache,
-                        count_total=True,
                     )
                     _check_cancelled(config)
                     _assert_source_metadata_unchanged(source, source_metadata)
@@ -417,7 +410,7 @@ def _translate_csv_snapshot_config(
             # Publish a requested/partial report before the CSV. If reporting
             # fails, the mixed-language output is never made visible.
             publication = _finalize_report(result, config)
-            # AtomicCsvWriter now flushes and fsyncs its staging file, then runs
+            # AtomicCsvWriter flushes and fsyncs its staging file, then runs
             # the cancellation and source-digest callback immediately before
             # the atomic directory-entry operation.
         result.warnings.extend(atomic_writer.cleanup_warnings)
@@ -428,7 +421,7 @@ def _translate_csv_snapshot_config(
                 "the private report rollback file could not be removed"
             )
     except _Cancelled:
-        _rollback_report(publication)
+        publication.rollback()
         _remove_source_snapshot(inspection.path)
         result.status = RunStatus.CANCELLED
         result.output_path = None
@@ -445,46 +438,6 @@ def _translate_csv_snapshot_config(
         raise
 
     return result
-
-
-def _normalize_config(
-    source_language: str | TranslationConfig,
-    target_language: str | None,
-    *,
-    config: TranslationConfig | None,
-    options: dict[str, Any],
-) -> TranslationConfig:
-    """Merge a reusable config with explicit call-site overrides."""
-
-    valid_fields = {item.name for item in fields(TranslationConfig)}
-    unknown = sorted(set(options) - valid_fields)
-    if unknown:
-        raise TypeError("unexpected translation option(s): " + ", ".join(unknown))
-
-    if isinstance(source_language, TranslationConfig):
-        if config is not None:
-            raise TypeError("pass a TranslationConfig either positionally or by config, not both")
-        if target_language is not None:
-            raise TypeError("target_language is already contained in TranslationConfig")
-        base = source_language
-        language_overrides: dict[str, Any] = {}
-    else:
-        if target_language is None:
-            raise TypeError("target_language is required")
-        base = config
-        language_overrides = {
-            "source_language": source_language,
-            "target_language": target_language,
-        }
-
-    values: dict[str, Any] = {}
-    if base is not None:
-        if not isinstance(base, TranslationConfig):
-            raise TypeError("config must be a TranslationConfig")
-        values.update({item.name: getattr(base, item.name) for item in fields(base)})
-    values.update(language_overrides)
-    values.update(options)
-    return TranslationConfig(**values)
 
 
 def _provider_chain(config: TranslationConfig) -> tuple[Any, ...]:
@@ -690,7 +643,16 @@ def _enforce_provider_privacy(
         # is its exact built-in EchoProvider without an injected transform.
         # Custom/local model providers must declare the endpoint that receives
         # text so local-only policy can validate it.
-        if type(provider) is EchoProvider and provider._transform is None:
+        if (
+            type(provider) is EchoProvider
+            and provider._transform is None
+            # The exemption proves the class is offline, but _call_provider
+            # dispatches on the instance attribute, so a shadowing
+            # provider.translate/translate_corrective could still run arbitrary
+            # (network-capable) code. Refuse the exemption if either is shadowed.
+            and "translate" not in vars(provider)
+            and "translate_corrective" not in vars(provider)
+        ):
             return
         raise PrivacyViolation(
             f"local-only mode cannot verify endpoint for {name}"
@@ -704,6 +666,17 @@ def _enforce_provider_privacy(
             raise PrivacyViolation(
                 f"local-only mode rejected {name}: {exc}"
             ) from exc
+
+
+def _read_header(reader: Any, config: TranslationConfig) -> list[str]:
+    """Read and limit-validate the header row, shared by both reader passes."""
+
+    try:
+        headers = next(reader)
+    except StopIteration as exc:
+        raise CsvInputError("input CSV does not contain a header row") from exc
+    _validate_row_limits(headers, config, location="header")
+    return headers
 
 
 def _validate_row_limits(
@@ -764,51 +737,79 @@ def _process_rows(
     result: TranslationResult,
     attempts: dict[tuple[int, int], ProviderAttempt],
     cache: _TranslationCache,
-    *,
-    count_total: bool,
 ) -> list[tuple[int, list[str]]]:
     _check_cancelled(config)
-    selected_set = set(selected_indexes)
+    # Only selected columns are visited. Ascending order fixes cell/plan
+    # ordering (and thus item IDs); non-selected skips are counted
+    # arithmetically from the row width.
+    selected_sorted = sorted(set(selected_indexes))
     output = [(number, list(row)) for number, row in rows]
     cells: list[_CellPlan] = []
+    cells_append = cells.append
+
+    # Run-invariant values hoisted out of the per-cell hot loop below.
+    explicitly_selected = config.columns is not None
+    source_key = config.source_language.casefold()
+    target_key = config.target_language.casefold()
+    languages_identical = source_key == target_key
+    header_len = len(headers)
+    max_chars = config.max_chars
+    preserve_placeholders = config.preserve_placeholders
 
     for row_number, row in output:
-        if count_total:
-            if row_number > 0:
-                result.row_count += 1
-            result.total_cells += len(row)
-        for index, value in enumerate(row):
-            if index not in selected_set:
-                if count_total:
-                    result.skipped_cells += 1
+        if row_number > 0:  # the header row (0) is excluded from row_count
+            result.row_count += 1
+        row_len = len(row)
+        result.total_cells += row_len
+        present = 0
+        if languages_identical:
+            # Identical languages skip every cell, so per-cell eligibility
+            # never needs to be evaluated.
+            for index in selected_sorted:
+                if index < row_len:
+                    present += 1
+            result.selected_cells += present
+            result.skipped_cells += row_len
+            continue
+        for index in selected_sorted:
+            if index >= row_len:
                 continue
-            if count_total:
-                result.selected_cells += 1
-            explicitly_selected = config.columns is not None
-            eligible = bool(value.strip()) if explicitly_selected else should_translate_cell(value)
-            if config.source_language.casefold() == config.target_language.casefold() or not eligible:
-                if count_total:
-                    result.skipped_cells += 1
+            present += 1
+            value = row[index]
+            eligible = (
+                bool(value.strip())
+                if explicitly_selected
+                else should_translate_cell(value)
+            )
+            if not eligible:
+                result.skipped_cells += 1
                 continue
-            column_name = headers[index] if index < len(headers) else ""
+            column_name = headers[index] if index < header_len else ""
             segments = segment_text(
                 value,
-                config.max_chars,
-                preserve_placeholders=config.preserve_placeholders,
+                max_chars,
+                preserve_placeholders=preserve_placeholders,
             )
-            if not any(segment.translatable for segment in segments):
-                if count_total:
-                    result.skipped_cells += 1
+            translatable_count = 0
+            for segment in segments:
+                if segment.translatable:
+                    translatable_count += 1
+            if not translatable_count:
+                result.skipped_cells += 1
                 continue
-            cells.append(
+            cells_append(
                 _CellPlan(
                     row_number=row_number,
                     column_index=index,
                     column_name=column_name,
                     original=value,
                     segments=segments,
+                    translatable_count=translatable_count,
+                    row=row,
                 )
             )
+        result.selected_cells += present
+        result.skipped_cells += row_len - present
 
     if not cells:
         return output
@@ -816,8 +817,6 @@ def _process_rows(
     pending_by_text: OrderedDict[str, _Item] = OrderedDict()
     locations: dict[str, list[tuple[_CellPlan, int]]] = {}
     canonical_for_text: dict[str, str] = {}
-    source_key = config.source_language.casefold()
-    target_key = config.target_language.casefold()
 
     for cell in cells:
         for segment_index, segment in enumerate(cell.segments):
@@ -862,7 +861,6 @@ def _process_rows(
             for cell, _ in locations[item_id]:
                 cell.failures.append(failure)
 
-    row_lookup = {row_number: row for row_number, row in output}
     for cell in cells:
         if cell.failures:
             first = cell.failures[0]
@@ -906,12 +904,15 @@ def _process_rows(
             )
             # The original row was prevalidated and remains untouched.
             continue
-        row_lookup[cell.row_number][cell.column_index] = translated_value
+        cell.row[cell.column_index] = translated_value
         result.translated_cells += 1
-        translatable_indexes = {
-            index for index, segment in enumerate(cell.segments) if segment.translatable
-        }
-        if translatable_indexes and translatable_indexes <= cell.cached_segments:
+        # A cell is fully cached when every translatable segment was resolved
+        # from the cache or in-batch dedup (both only ever add translatable
+        # indexes to ``cached_segments``), i.e. the counts coincide.
+        if (
+            cell.translatable_count
+            and cell.translatable_count == len(cell.cached_segments)
+        ):
             result.cached_cells += 1
     return output
 
@@ -1175,32 +1176,28 @@ def _call_provider(
         else:
             pairs = [(item.id, item.text) for item in raw_values]
     except (AttributeError, TypeError) as exc:
-        raise ProviderResponseError(
+        raise _ResponseContractError(
             "provider response must contain items with string id and text fields"
         ) from exc
     if len(pairs) > len(expected):
-        raise ProviderResponseError("provider returned more items than requested")
+        raise _ResponseContractError("provider returned more items than requested")
     received_order = [item_id for item_id, _ in pairs]
     if received_order != expected:
-        raise ProviderResponseError("provider response item order did not match the request")
+        raise _ResponseContractError("provider response item order did not match the request")
     received: dict[str, str] = {}
     for item_id, text in pairs:
         if not isinstance(item_id, str) or not isinstance(text, str):
-            raise ProviderResponseError("provider response IDs and text must be strings")
+            raise _ResponseContractError("provider response IDs and text must be strings")
         if item_id in received:
-            raise ProviderResponseError(f"provider returned duplicate item ID {item_id!r}")
+            raise _ResponseContractError(f"provider returned duplicate item ID {item_id!r}")
         received[item_id] = text
-    if set(received) != set(expected):
-        missing = sorted(set(expected) - set(received))
-        unexpected = sorted(set(received) - set(expected))
-        raise ProviderResponseError(
-            f"provider response ID mismatch (missing={missing}, unexpected={unexpected})"
-        )
+    # ``received_order == expected`` plus the duplicate check above guarantee
+    # ``set(received) == set(expected)``.
     for source_item in items:
         value = received[source_item.id]
         maximum = max(4_096, len(source_item.text) * 8 + 1_024)
         if len(value) > maximum:
-            raise ProviderResponseError(
+            raise _ResponseContractError(
                 f"provider response for {source_item.id!r} exceeded the safety limit"
             )
         if (
@@ -1208,25 +1205,35 @@ def _call_provider(
             and not value.strip()
             and not config.allow_empty_translations
         ):
-            raise ProviderResponseError(
+            raise _ResponseContractError(
                 "provider returned an empty translation for non-empty source text"
             )
         try:
             value.encode(config.output_encoding, errors="strict")
         except UnicodeEncodeError as exc:
-            raise ProviderOutputEncodingError(
+            raise _OutputEncodingError(
                 "provider translation is not representable in the output encoding"
             ) from exc
-    return {item_id: received[item_id] for item_id in expected}
+    # ``received`` was inserted in ``pairs`` order, which equals ``expected``,
+    # so it is already the requested mapping in request order.
+    return received
+
+
+_TRANSLATION_ITEM: Any = None
 
 
 def _make_provider_items(items: Sequence[_Item]) -> list[Any]:
-    try:
+    # Deferred to avoid an import cycle; a genuine ImportError must propagate
+    # rather than silently pass a differently-typed object to providers. The
+    # resolved class is cached after the first call to avoid re-running the
+    # import machinery on every batch in the hot path.
+    global _TRANSLATION_ITEM
+    cls = _TRANSLATION_ITEM
+    if cls is None:
         from .providers import TranslationItem
 
-        return [TranslationItem(id=item.id, text=item.text) for item in items]
-    except ImportError:
-        return list(items)
+        cls = _TRANSLATION_ITEM = TranslationItem
+    return [cls(item.id, item.text) for item in items]
 
 
 def _provider_name(provider: Any) -> str:
@@ -1307,13 +1314,6 @@ def _sanitized_endpoints(endpoints: Iterable[str]) -> tuple[str, ...]:
     return tuple(sanitized)
 
 
-def _provider_endpoint(provider: Any) -> str | None:
-    """Return the provider's first sanitized recipient for compatibility."""
-
-    endpoints = _sanitized_endpoints(_provider_recipient_urls(provider))
-    return endpoints[0] if endpoints else None
-
-
 def _error_category(error: Exception) -> str:
     if isinstance(error, (TimeoutError, ConnectionError)):
         return "transient"
@@ -1352,7 +1352,7 @@ def _error_category(error: Exception) -> str:
 
 def _is_retryable(error: Exception) -> bool:
     if hasattr(error, "retryable"):
-        return bool(getattr(error, "retryable"))
+        return bool(error.retryable)
     return isinstance(error, (TimeoutError, ConnectionError))
 
 
@@ -1518,10 +1518,6 @@ def _publish_report(
         raise
 
 
-def _rollback_report(publication: _ReportPublication) -> None:
-    publication.rollback()
-
-
 def _finalize_report(
     result: TranslationResult, config: TranslationConfig
 ) -> _ReportPublication:
@@ -1584,4 +1580,4 @@ def _validate_explicit_report_path(
         raise OutputExistsError(f"report path is not a regular file: {report}")
 
 
-__all__ = ["PrivacyViolation", "ProviderResponseError", "translate_csv"]
+__all__ = ["PrivacyViolation", "translate_csv"]

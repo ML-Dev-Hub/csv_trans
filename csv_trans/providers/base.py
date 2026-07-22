@@ -42,6 +42,7 @@ class Translator(Protocol):
         target_language: str,
     ) -> list[TranslationItem]:
         """Translate *items* while preserving their IDs and input order."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,6 +144,7 @@ class HttpClient(Protocol):
         timeout: float | None = None,
     ) -> HttpResponse:
         """Send one request without redirects and return every HTTP status."""
+        ...
 
 
 class HttpTransportError(RuntimeError):
@@ -180,6 +182,7 @@ class UrllibHttpClient:
     """Synchronous HTTP client honoring :class:`HttpClient`'s no-redirect rule."""
 
     DEFAULT_MAX_RESPONSE_BYTES = 4 * 1024 * 1024
+    DEFAULT_TIMEOUT = 60.0
 
     def __init__(
         self,
@@ -241,8 +244,13 @@ class UrllibHttpClient:
             method=method.upper(),
         )
 
+        # In urllib, timeout=None means "use the global default socket timeout,"
+        # which is itself None unless set process-wide, i.e. block forever.
+        # Substitute a concrete per-operation default so a caller that omits a
+        # timeout cannot hang indefinitely (an explicit timeout is respected).
+        effective_timeout = self.DEFAULT_TIMEOUT if timeout is None else timeout
         try:
-            with self._opener.open(request, timeout=timeout) as response:
+            with self._opener.open(request, timeout=effective_timeout) as response:
                 return HttpResponse(
                     status_code=response.status,
                     body=self._read_bounded(response),
