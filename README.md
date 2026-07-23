@@ -3,6 +3,7 @@
 [![CI](https://github.com/ML-Dev-Hub/csv_trans/actions/workflows/ci.yml/badge.svg)](https://github.com/ML-Dev-Hub/csv_trans/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/csv-trans.svg)](https://pypi.org/project/csv-trans/)
 [![Python](https://img.shields.io/pypi/pyversions/csv-trans.svg)](https://pypi.org/project/csv-trans/)
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/csv-trans?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/csv-trans)
 
 `csv-trans` translates selected text fields in CSV files through a built-in
 no-key provider, OpenAI-compatible hosted or local models, or Anthropic. Version
