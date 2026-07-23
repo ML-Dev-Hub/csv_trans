@@ -3,7 +3,7 @@
 All notable changes to `csv-trans` are documented here. The project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - Unreleased
+## [2.0.0] - 2026-07-23
 
 ### Added
 
@@ -81,5 +81,5 @@ See [Migrating to v2](docs/internal/MIGRATION_V2.md) for compatibility details.
 - Last release of the pandas/PyArrow and `deep-translator` implementation.
 - Added command-line and Python entry points for whole-file CSV translation.
 
-[2.0.0]: https://github.com/ML-Dev-Hub/csv_trans/compare/1.1.4...HEAD
+[2.0.0]: https://github.com/ML-Dev-Hub/csv_trans/compare/1.1.4...v2.0.0
 [1.1.4]: https://github.com/ML-Dev-Hub/csv_trans/releases/tag/1.1.4
