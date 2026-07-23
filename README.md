@@ -339,11 +339,8 @@ cannot silently treat mixed-language output as complete.
 - [Migration from 1.x](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/internal/MIGRATION_V2.md)
 - [Local and CI test bed](https://github.com/ML-Dev-Hub/csv_trans/blob/main/TESTING.md)
 - [Security and private reporting](https://github.com/ML-Dev-Hub/csv_trans/blob/main/SECURITY.md)
-- [Historical pre-v2 repository audit](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/internal/REPOSITORY_AUDIT.md)
-- [Accepted product direction](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/internal/PRODUCT_DIRECTION.md)
 - [Version 2 architecture](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/internal/ARCHITECTURE_V2.md)
 - [Changelog](https://github.com/ML-Dev-Hub/csv_trans/blob/main/CHANGELOG.md)
-- [Release process](https://github.com/ML-Dev-Hub/csv_trans/blob/main/docs/internal/RELEASING.md)
 - [Contributing](https://github.com/ML-Dev-Hub/csv_trans/blob/main/CONTRIBUTING.md)
 
 ## Acknowledgements
