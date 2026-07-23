@@ -29,6 +29,12 @@ dependencies**.
 python -m pip install csv-trans
 ```
 
+Or with [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv pip install csv-trans
+```
+
 Both `csv-trans` and the historical `csv_trans` executable name are installed.
 
 ## Quick start

@@ -42,12 +42,12 @@ python -m pip install build==1.5.0
 python -m build
 python -c "import glob, subprocess, sys; wheel = glob.glob('dist/*.whl'); assert len(wheel) == 1, wheel; subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--no-deps', wheel[0]])"
 python -m pip check
-python -c "import importlib.metadata as m; assert m.version('csv-trans') == '2.0.0'; assert not m.requires('csv-trans')"
+python -c "import importlib.metadata as m; assert m.version('csv-trans') == '2.0.1'; assert not m.requires('csv-trans')"
 csv-trans --help
 csv_trans --help
 python -c "import glob, subprocess, sys; sdist = glob.glob('dist/*.tar.gz'); assert len(sdist) == 1, sdist; subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--force-reinstall', '--no-deps', sdist[0]])"
 python -m pip check
-python -c "import importlib.metadata as m; assert m.version('csv-trans') == '2.0.0'; assert not m.requires('csv-trans')"
+python -c "import importlib.metadata as m; assert m.version('csv-trans') == '2.0.1'; assert not m.requires('csv-trans')"
 csv-trans --help
 ```
 

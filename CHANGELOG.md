@@ -3,6 +3,19 @@
 All notable changes to `csv-trans` are documented here. The project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-07-23
+
+### Changed
+
+- The `Documentation` project URL now points to the hosted documentation site
+  at <https://ml-dev-hub.github.io/csv_trans/>.
+
+### Removed
+
+- Outdated internal documentation files `PRODUCT_DIRECTION.md`,
+  `RELEASING.md`, and `REPOSITORY_AUDIT.md`.
+- The `Security` project URL from packaging metadata.
+
 ## [2.0.0] - 2026-07-23
 
 ### Added
@@ -81,5 +94,6 @@ See [Migrating to v2](docs/internal/MIGRATION_V2.md) for compatibility details.
 - Last release of the pandas/PyArrow and `deep-translator` implementation.
 - Added command-line and Python entry points for whole-file CSV translation.
 
+[2.0.1]: https://github.com/ML-Dev-Hub/csv_trans/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/ML-Dev-Hub/csv_trans/compare/1.1.4...v2.0.0
 [1.1.4]: https://github.com/ML-Dev-Hub/csv_trans/releases/tag/1.1.4

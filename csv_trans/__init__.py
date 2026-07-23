@@ -8,9 +8,9 @@ try:
     try:
         __version__ = version("csv-trans")
     except PackageNotFoundError:
-        __version__ = "2.0.0"
+        __version__ = "2.0.1"
 except ImportError:  # pragma: no cover - Python 3.11+ always has importlib.metadata
-    __version__ = "2.0.0"
+    __version__ = "2.0.1"
 
 from .core import PrivacyViolation, translate_csv
 from .models import (

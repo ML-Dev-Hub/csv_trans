@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "csv-trans"
-version = "2.0.0"
+version = "2.0.1"
 description = "Dependency-free CSV translation with pluggable remote and local providers"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -36,10 +36,9 @@ dependencies = []
 
 [project.urls]
 Homepage = "https://github.com/ML-Dev-Hub/csv_trans"
-Documentation = "https://github.com/ML-Dev-Hub/csv_trans#readme"
+Documentation = "https://ml-dev-hub.github.io/csv_trans/"
 Changelog = "https://github.com/ML-Dev-Hub/csv_trans/blob/main/CHANGELOG.md"
 Issues = "https://github.com/ML-Dev-Hub/csv_trans/issues"
-Security = "https://github.com/ML-Dev-Hub/csv_trans/security/policy"
 Source = "https://github.com/ML-Dev-Hub/csv_trans"
 
 [project.scripts]

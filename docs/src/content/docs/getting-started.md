@@ -12,7 +12,13 @@ provider, then point the same code and commands at a real endpoint.
 python -m pip install csv-trans
 ```
 
-`csv-trans` `2.0.0` runs on CPython **3.11, 3.12, 3.13, and 3.14** with **no
+Or with [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv pip install csv-trans
+```
+
+`csv-trans` `2.0.1` runs on CPython **3.11, 3.12, 3.13, and 3.14** with **no
 third-party runtime dependencies** — the engine uses the standard library alone.
 
 Installation provides two identical console scripts, and the package is also
@@ -28,7 +34,7 @@ Verify the install, then confirm an end-to-end run with the offline `echo`
 provider, which needs no credentials or network:
 
 ```bash
-python -c "import csv_trans; print(csv_trans.__version__)"   # 2.0.0
+python -c "import csv_trans; print(csv_trans.__version__)"   # 2.0.1
 
 printf 'id,text\n1,hello\n' > smoke.csv
 csv-trans -f smoke.csv -sl en -tl fr --provider echo --columns text \
