@@ -79,7 +79,7 @@ jobs:
       - name: Smoke-test installed metadata outside the checkout
         working-directory: ${{ runner.temp }}
         run: |
-          python -c "import importlib.metadata as m; assert m.version('csv-trans') == '2.0.0'; assert not (m.requires('csv-trans') or [])"
+          python -c "import importlib.metadata as m; assert m.version('csv-trans') == '2.0.1'; assert not (m.requires('csv-trans') or [])"
           python -c "from importlib.resources import files; assert files('csv_trans').joinpath('py.typed').is_file()"
           python -m pip check
           csv-trans --help
@@ -107,7 +107,7 @@ jobs:
         working-directory: ${{ runner.temp }}
         shell: bash
         run: |
-          "${RUNNER_TEMP}/csv-trans-sdist/bin/python" -c "import importlib.metadata as m; assert m.version('csv-trans') == '2.0.0'; assert not (m.requires('csv-trans') or [])"
+          "${RUNNER_TEMP}/csv-trans-sdist/bin/python" -c "import importlib.metadata as m; assert m.version('csv-trans') == '2.0.1'; assert not (m.requires('csv-trans') or [])"
           "${RUNNER_TEMP}/csv-trans-sdist/bin/python" -c "from pathlib import Path; Path('sdist-smoke.csv').write_text('id,text\n1,hello\n', encoding='utf-8')"
           "${RUNNER_TEMP}/csv-trans-sdist/bin/csv-trans" -f sdist-smoke.csv -sl en -tl fr --provider echo --columns text --output sdist-smoke.out.csv --privacy local-only --quiet
           "${RUNNER_TEMP}/csv-trans-sdist/bin/python" -c "import csv; rows = list(csv.reader(open('sdist-smoke.out.csv', encoding='utf-8', newline=''))); assert rows == [['id', 'text'], ['1', 'hello']]"
